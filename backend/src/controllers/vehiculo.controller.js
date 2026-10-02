@@ -16,6 +16,45 @@ exports.obtenerVehiculos = async (req, res) => {
 };
 
 // GET /api/vehiculos/placa/:placa - BUSCAR POR PLACA (núcleo del flujo del negocio)
+exports.consultarEstadoPublico = async (req, res) => {
+  try {
+    const vehiculo = await Vehiculo.findOne({
+      placa: req.params.placa.toUpperCase(),
+    }).select("placa marca modelo anio");
+
+    if (!vehiculo) {
+      return res.status(404).json({ mensaje: "Vehículo no registrado" });
+    }
+
+    const historial = await OrdenReparacion.find({
+      vehiculo: vehiculo._id,
+    })
+      .sort({ fechaIngreso: -1 })
+      .select("descripcionProblema fechaIngreso estado fechaEntrega monto");
+
+    const ordenActual = historial.find((orden) => orden.estado !== "Entregado") || historial[0] || null;
+
+    res.json({
+      vehiculo,
+      historial,
+      ordenActual: ordenActual
+        ? {
+            descripcionProblema: ordenActual.descripcionProblema,
+            fechaIngreso: ordenActual.fechaIngreso,
+            estado: ordenActual.estado,
+            fechaEntrega: ordenActual.fechaEntrega,
+            monto: ordenActual.monto,
+          }
+        : null,
+    });
+  } catch (error) {
+    res.status(500).json({
+      mensaje: "Error al consultar el estado del vehículo",
+      error: error.message,
+    });
+  }
+};
+
 exports.buscarPorPlaca = async (req, res) => {
   try {
     const vehiculo = await Vehiculo.findOne({
@@ -24,10 +63,11 @@ exports.buscarPorPlaca = async (req, res) => {
     if (!vehiculo) {
       return res.status(404).json({ mensaje: "Vehículo no registrado" });
     }
-    // Historial de reparaciones anteriores (de más nueva a más vieja)
+
     const historial = await OrdenReparacion.find({
       vehiculo: vehiculo._id,
-    }).sort({ createdAt: -1 });
+    }).sort({ fechaIngreso: -1, createdAt: -1 });
+
     res.json({ vehiculo, historial });
   } catch (error) {
     res
