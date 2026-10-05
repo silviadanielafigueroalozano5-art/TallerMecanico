@@ -45,6 +45,7 @@ button { cursor: pointer; }
 .icon-button { position: relative; display: grid; width: 31px; height: 31px; place-items: center; border: 0; border-radius: 8px; background: transparent; color: #74808e; }
 .icon-button:hover { background: #f4f5f8; }
 .icon-button .material-icons { font-size: 20px; }
+.notification-button, .top-avatar { display: none !important; }
 .notification-button i { position: absolute; top: 6px; right: 6px; width: 5px; height: 5px; border: 1px solid white; border-radius: 50%; background: #ed795f; }
 .top-avatar { width: 30px; height: 30px; font-size: 9px; }
 .page-content { max-width: 1220px; margin: 0 auto; padding: 24px 24px 0; }

@@ -499,8 +499,6 @@ watch(
         </div>
         <div class="topbar-actions">
           <span class="today"><span class="material-icons">calendar_today</span>{{ new Date().toLocaleDateString('es-CO', { weekday: 'short', day: 'numeric', month: 'short' }) }}</span>
-          <button class="icon-button notification-button" aria-label="Notificaciones"><span class="material-icons">notifications_none</span><i></i></button>
-          <div class="top-avatar">JM</div>
         </div>
       </header>
 
