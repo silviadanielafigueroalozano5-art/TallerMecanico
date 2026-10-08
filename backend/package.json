@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "nodemon src/app.js",
     "start": "node src/app.js",
-    "seed:demo": "node src/seedDemo.js"
+    "seed:demo": "node src/seedDemo.js",
+    "seed:masivo": "node src/seedMasivo.js"
   },
   "keywords": [],
   "author": "",
