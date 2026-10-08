@@ -2,6 +2,7 @@
 import { computed, reactive, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRoute, useRouter } from 'vue-router'
+import { useAuthStore } from '../stores/auth'
 import { useWorkshopStore, obtenerEstadosDisponibles } from '../stores/workshop'
 
 const estados = ['Recibido', 'En Diagnóstico', 'En Reparación', 'Listo', 'Entregado']
@@ -27,6 +28,7 @@ const tiposReparacion = [
 const pantalla = ref('buscar')
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
 const workshop = useWorkshopStore()
 const {
   searchMode: tipoBusqueda,
@@ -43,9 +45,15 @@ const guardando = ref(false)
 const cargandoSeguimiento = ref(false)
 const error = ref('')
 const aviso = ref('')
+
+function cerrarSesion() {
+  authStore.logout()
+  router.replace({ name: 'login' })
+}
 const noEncontrado = ref(false)
 const propietarioExistente = ref(false)
 const filtroSeguimiento = ref('')
+const filtroHistorialTexto = ref('')
 const etapaRegistro = ref(1)
 const estadosIniciales = [...estados]
 
@@ -131,15 +139,53 @@ const gruposOrdenes = computed(() =>
   })),
 )
 
+const ordenesEntregadas = computed(() =>
+  [...(historialGeneral.value || [])]
+    .filter((orden) => orden.estado === 'Entregado')
+    .sort((a, b) => new Date(b.fechaEntrega || b.fechaIngreso) - new Date(a.fechaEntrega || a.fechaIngreso)),
+)
+
+const resumenOrdenes = computed(() => ({
+  enProceso: ordenes.value.filter((orden) =>
+    ['Recibido', 'En Diagnóstico', 'En Reparación'].includes(orden.estado),
+  ).length,
+  listos: ordenes.value.filter((orden) => orden.estado === 'Listo').length,
+  diagnostico: ordenes.value.filter((orden) => orden.estado === 'En Diagnóstico').length,
+  recibidos: ordenes.value.filter((orden) => orden.estado === 'Recibido').length,
+  reparacion: ordenes.value.filter((orden) => orden.estado === 'En Reparación').length,
+}))
+
 const historialEntregados = computed(() =>
   (historial.value || []).filter((orden) => orden.estado === 'Entregado'),
 )
 
-const historialGeneralOrdenado = computed(() =>
-  [...(historialGeneral.value || [])].sort(
-    (a, b) => new Date(b.fechaIngreso) - new Date(a.fechaIngreso),
-  ),
-)
+const historialGeneralOrdenado = computed(() => {
+  const filtro = filtroHistorialTexto.value.trim().toLocaleLowerCase()
+
+  return [...(historialGeneral.value || [])]
+    .filter((orden) => {
+      const vehiculo = orden.vehiculo || {}
+      const cliente = vehiculo.cliente || {}
+      const coincideTexto = !filtro || [
+        vehiculo.placa,
+        vehiculo.marca,
+        vehiculo.modelo,
+        cliente.nombre,
+        cliente.apellido,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLocaleLowerCase()
+        .includes(filtro)
+
+      return coincideTexto
+    })
+    .sort((a, b) => new Date(b.fechaIngreso) - new Date(a.fechaIngreso))
+})
+
+function limpiarFiltrosHistorial() {
+  filtroHistorialTexto.value = ''
+}
 
 function limpiarMensajes() {
   error.value = ''
@@ -361,7 +407,18 @@ async function abrirHistorial() {
   pantalla.value = 'historial'
   limpiarMensajes()
   if (route.name !== 'historial') {
-    await router.push({ name: 'historial' })
+    await router.push({ name: 'historial', query: {} })
+    return
+  }
+  if (route.query.estado) await router.replace({ name: 'historial', query: {} })
+  await cargarHistorialGeneral()
+}
+
+async function abrirEntregados() {
+  pantalla.value = 'entregados'
+  limpiarMensajes()
+  if (route.name !== 'historial' || route.query.estado !== 'entregado') {
+    await router.push({ name: 'historial', query: { estado: 'entregado' } })
     return
   }
   await cargarHistorialGeneral()
@@ -385,6 +442,14 @@ async function cargarOrdenes() {
     error.value = err.message || 'No fue posible cargar las órdenes activas.'
   } finally {
     cargandoSeguimiento.value = false
+  }
+}
+
+async function cargarResumenOrdenes() {
+  try {
+    await workshop.cargarOrdenesActivas()
+  } catch (err) {
+    error.value = err.message || 'No fue posible cargar el estado de las órdenes.'
   }
 }
 
@@ -426,10 +491,11 @@ function formatoDinero(valor) {
 }
 
 watch(
-  () => [route.name, route.params.placa],
-  async ([name, placa]) => {
+  () => [route.name, route.params.placa, route.query.estado],
+  async ([name, placa, estado]) => {
     if (name === 'buscar') {
       pantalla.value = 'buscar'
+      await cargarResumenOrdenes()
       return
     }
     if (name === 'seguimiento') {
@@ -438,7 +504,7 @@ watch(
       return
     }
     if (name === 'historial') {
-      pantalla.value = 'historial'
+      pantalla.value = estado === 'entregado' ? 'entregados' : 'historial'
       await cargarHistorialGeneral()
       return
     }
@@ -495,10 +561,20 @@ watch(
             >
               <span class="material-icons">history</span><span>Historial</span>
             </button>
+            <button
+              class="nav-link"
+              :class="{ active: pantalla === 'entregados' }"
+              @click="abrirEntregados"
+            >
+              <span class="material-icons">task_alt</span><span>Entregados</span>
+            </button>
           </nav>
         </div>
         <div class="topbar-actions">
           <span class="today"><span class="material-icons">calendar_today</span>{{ new Date().toLocaleDateString('es-CO', { weekday: 'short', day: 'numeric', month: 'short' }) }}</span>
+          <button class="nav-link logout-button" type="button" @click="cerrarSesion">
+            <span class="material-icons">logout</span><span>Cerrar sesión</span>
+          </button>
         </div>
       </header>
 
@@ -516,7 +592,7 @@ watch(
           <section class="page-heading">
             <div>
               <div class="eyebrow">GESTIÓN DEL TALLER</div>
-              <h1>Todo en marcha.</h1>
+              <h1>Todo en <span class="heading-accent">marcha</span><span class="heading-period">.</span></h1>
               <p>Encuentra un vehículo, revisa su historial o inicia una nueva reparación.</p>
             </div>
             <button class="secondary-button" @click="cargarSeguimiento">
@@ -556,6 +632,32 @@ watch(
               <button v-if="!noEncontrado" class="register-link" type="button" @click="iniciarRegistro">
                 <span class="material-icons">person_add</span> ¿No aparece? Registrar vehículo
               </button>
+            </div>
+          </section>
+
+          <section class="order-summary" aria-label="Estado de las órdenes">
+            <div class="summary-label">ESTADO DE LAS ÓRDENES</div>
+            <div class="summary-grid">
+              <article class="summary-card">
+                <span class="summary-dot dot-progress"></span>
+                 <div><span>Recibidos</span><strong>{{ resumenOrdenes.recibidos }}</strong></div>
+              </article>
+              <article class="summary-card">
+                <span class="summary-dot dot-ready"></span>
+               <div><span>En diagnóstico</span><strong>{{ resumenOrdenes.diagnostico }}</strong></div>
+              </article>
+              <article class="summary-card">
+                <span class="summary-dot dot-diagnosis"></span>
+                <div><span>En reparación</span><strong>{{ resumenOrdenes.reparacion }}</strong></div>
+              </article>
+              <article class="summary-card">
+                <span class="summary-dot dot-received"></span>
+                <div><span>En proceso</span><strong>{{ resumenOrdenes.enProceso }}</strong></div>
+              </article>
+              <article class="summary-card">
+                <span class="summary-dot dot-repair"></span>
+                <div><span>Listos para entregar</span><strong>{{ resumenOrdenes.listos }}</strong></div>
+              </article>
             </div>
           </section>
 
@@ -697,6 +799,25 @@ watch(
               <div><div class="eyebrow">REGISTRO COMPLETO</div><h2>Órdenes del taller</h2><p>Todo el historial del servicio organizado por fecha.</p></div>
               <span class="result-count">{{ historialGeneralOrdenado.length }} {{ historialGeneralOrdenado.length === 1 ? 'orden' : 'órdenes' }}</span>
             </div>
+            <div class="history-filters" role="search" aria-label="Filtrar historial del taller">
+              <label class="history-search-field">
+                <span class="material-icons" aria-hidden="true">search</span>
+                <input
+                  v-model="filtroHistorialTexto"
+                  type="search"
+                  placeholder="Buscar vehículo, placa o cliente"
+                  aria-label="Buscar por vehículo, placa o cliente"
+                />
+              </label>
+              <button
+                class="secondary-button history-clear-button"
+                type="button"
+                :disabled="!filtroHistorialTexto"
+                @click="limpiarFiltrosHistorial"
+              >
+                Limpiar filtros
+              </button>
+            </div>
             <div v-if="historialGeneralOrdenado.length" class="history-table-wrap">
               <table class="history-table">
                 <thead>
@@ -721,7 +842,52 @@ watch(
                 </tbody>
               </table>
             </div>
-            <div v-else class="empty-state"><div class="empty-icon"><span class="material-icons">history</span></div><strong>No hay historial registrado</strong><p>Aún no se han creado órdenes en el taller.</p></div>
+            <div v-else class="empty-state">
+              <div class="empty-icon"><span class="material-icons">{{ historialGeneral.length ? 'search_off' : 'history' }}</span></div>
+              <strong>{{ historialGeneral.length ? 'No hay resultados para estos filtros' : 'No hay historial registrado' }}</strong>
+              <p>{{ historialGeneral.length ? 'Prueba con otras fechas, otro vehículo o el nombre del cliente.' : 'Aún no se han creado órdenes en el taller.' }}</p>
+              <button v-if="historialGeneral.length" class="secondary-button" type="button" @click="limpiarFiltrosHistorial">Limpiar filtros</button>
+            </div>
+          </section>
+        </template>
+
+        <template v-else-if="pantalla === 'entregados'">
+          <section class="page-heading">
+            <div><div class="eyebrow">ÓRDENES COMPLETADAS</div><h1>Vehículos entregados</h1><p>Consulta las órdenes que ya fueron entregadas a sus propietarios.</p></div>
+            <button class="secondary-button" @click="abrirEntregados"><span class="material-icons">refresh</span> Actualizar</button>
+          </section>
+          <section class="history-section">
+            <div class="section-heading">
+              <div><div class="eyebrow">REGISTRO DE ENTREGAS</div><h2>Órdenes entregadas</h2><p>Vehículos cuyo proceso de reparación ha finalizado.</p></div>
+              <span class="result-count">{{ ordenesEntregadas.length }} {{ ordenesEntregadas.length === 1 ? 'orden' : 'órdenes' }}</span>
+            </div>
+            <div v-if="ordenesEntregadas.length" class="history-table-wrap">
+              <table class="history-table">
+                <thead>
+                  <tr>
+                    <th>FECHA DE ENTREGA</th>
+                    <th>VEHÍCULO</th>
+                    <th>CLIENTE</th>
+                    <th>REPARACIÓN</th>
+                    <th>COSTO</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="orden in ordenesEntregadas" :key="orden._id">
+                    <td>{{ formatoFecha(orden.fechaEntrega) }}</td>
+                    <td><strong>{{ normalizarTexto(orden.vehiculo?.marca) }} {{ normalizarTexto(orden.vehiculo?.modelo) }}</strong><br /><small>{{ orden.vehiculo?.placa }}</small></td>
+                    <td>{{ normalizarTexto(orden.vehiculo?.cliente?.nombre || '—') }} {{ normalizarTexto(orden.vehiculo?.cliente?.apellido || '') }}</td>
+                    <td>{{ normalizarTexto(orden.descripcionProblema) }}</td>
+                    <td class="cost-cell">{{ formatoDinero(orden.monto) }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div v-else class="empty-state">
+              <div class="empty-icon"><span class="material-icons">task_alt</span></div>
+              <strong>No hay vehículos entregados</strong>
+              <p>Cuando una orden pase al estado Entregado, aparecerá en esta lista.</p>
+            </div>
           </section>
         </template>
 
