@@ -1,0 +1,20 @@
+const express = require("express");
+const controller = require("../controllers/auth.controller");
+const recuperacion = require("../controllers/recuperacion.controller");
+const { limitarIntentos } = require("../middleware/limitarIntentos");
+const router = express.Router();
+const intentos = new Map();
+router.post("/login", (req, res, next) => {
+  const ip = req.ip || "desconocida";
+  const ahora = Date.now();
+  const anterior = intentos.get(ip);
+  if (!anterior || ahora - anterior.inicio > 15 * 60 * 1000) intentos.set(ip, { inicio: ahora, cuenta: 0 });
+  const actual = intentos.get(ip);
+  if (actual.cuenta >= 10) return res.status(429).json({ mensaje: "Demasiados intentos. Espera 15 minutos e inténtalo de nuevo." });
+  actual.cuenta += 1;
+  if (intentos.size > 10000) for (const [key, value] of intentos) if (ahora - value.inicio > 15 * 60 * 1000) intentos.delete(key);
+  next();
+}, controller.iniciarSesion);
+router.post("/forgot-password", limitarIntentos(5), recuperacion.solicitarRestablecimiento);
+router.post("/reset-password", limitarIntentos(10), recuperacion.restablecerContrasena);
+module.exports = router;

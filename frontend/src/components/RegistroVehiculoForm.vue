@@ -31,6 +31,7 @@ async function guardarVehiculo() {
       ...vehiculo,
       placa: vehiculo.placa.toUpperCase(),
       cliente: props.cliente._id,
+      kilometraje: Number(vehiculo.kilometraje),
     })
 
     emit('vehiculo-creado', nuevoVehiculo)
@@ -59,7 +60,7 @@ async function guardarVehiculo() {
           v-model="vehiculo.placa"
           outlined
           label="Placa"
-          :rules="[(valor) => !!valor || 'La placa es obligatoria']"
+          :rules="[(valor) => /^[A-Za-z0-9-]{5,9}$/.test((valor || '').trim()) || 'Ingresa una placa válida de 5 a 8 caracteres']"
         />
 
         <div class="row q-col-gutter-md">
@@ -100,6 +101,17 @@ async function guardarVehiculo() {
             />
           </div>
         </div>
+
+        <q-input
+          v-model.number="vehiculo.kilometraje"
+          outlined
+          type="number"
+          min="0"
+          max="2000000"
+          step="1"
+          label="Kilometraje actual"
+          :rules="[(valor) => valor !== null && valor !== '' && Number.isSafeInteger(Number(valor)) && Number(valor) >= 0 && Number(valor) <= 2000000 || 'Ingresa un kilometraje entero válido']"
+        />
 
         <q-banner v-if="error" rounded class="bg-red-2 text-red-10">
           {{ error }}

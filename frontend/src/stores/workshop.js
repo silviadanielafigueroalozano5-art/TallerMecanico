@@ -4,6 +4,7 @@ import {
   consultarEstadoPublicoPorPlaca,
   buscarVehiculoPorPlaca,
   cambiarEstadoOrden,
+  actualizarOrden,
   crearCliente,
   crearOrden,
   crearVehiculo,
@@ -24,7 +25,7 @@ export function obtenerEstadosDisponibles(estadoActual) {
   const indiceActual = estadosSecuencia.indexOf(estadoActual)
   if (indiceActual === -1) return [estadoActual]
 
-  return estadosSecuencia.slice(indiceActual)
+  return estadosSecuencia.slice(indiceActual, indiceActual + 2)
 }
 
 export function validarTransicionEstado(estadoActual, estadoDestino) {
@@ -32,7 +33,7 @@ export function validarTransicionEstado(estadoActual, estadoDestino) {
   const indiceDestino = estadosSecuencia.indexOf(estadoDestino)
 
   if (indiceActual === -1 || indiceDestino === -1) return false
-  if (estadoDestino === estadoActual) return true
+  if (estadoDestino === estadoActual) return false
 
   return indiceDestino === indiceActual + 1
 }
@@ -117,14 +118,22 @@ export const useWorkshopStore = defineStore('workshop', {
       return this.historialGeneral
     },
 
-    async actualizarEstadoOrden(orden, estado) {
+    async guardarDetallesOrden(orden, datos) {
+      const actualizada = await actualizarOrden(orden._id, datos)
+      this.ordenes = this.ordenes.map((item) => item._id === actualizada._id ? { ...item, ...actualizada, vehiculo: item.vehiculo } : item)
+      this.historial = this.historial.map((item) => item._id === actualizada._id ? { ...item, ...actualizada } : item)
+      this.historialGeneral = this.historialGeneral.map((item) => item._id === actualizada._id ? { ...item, ...actualizada, vehiculo: item.vehiculo } : item)
+      return actualizada
+    },
+
+    async actualizarEstadoOrden(orden, estado, pagado = false) {
       if (!validarTransicionEstado(orden.estado, estado)) {
         throw new Error(
           `Solo puedes avanzar al siguiente paso del proceso: ${obtenerEstadosDisponibles(orden.estado).join(' → ')}`,
         )
       }
 
-      const actualizada = await cambiarEstadoOrden(orden._id, estado)
+      const actualizada = await cambiarEstadoOrden(orden._id, estado, pagado)
       this.ordenes = this.ordenes
         .map((item) =>
           item._id === actualizada._id

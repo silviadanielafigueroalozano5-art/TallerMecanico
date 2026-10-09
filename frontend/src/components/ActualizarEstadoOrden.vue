@@ -29,9 +29,14 @@ async function avanzarEstado() {
   error.value = ''
 
   try {
+    const pagado = siguienteEstado.value === 'Entregado'
+      ? window.confirm('Confirma que el cliente pagó la cuenta completa y retiró el vehículo.')
+      : false
+    if (siguienteEstado.value === 'Entregado' && !pagado) return
     const ordenActualizada = await cambiarEstadoOrden(
       props.orden._id,
       siguienteEstado.value,
+      pagado,
     )
     emit('estado-actualizado', ordenActualizada)
   } catch (err) {

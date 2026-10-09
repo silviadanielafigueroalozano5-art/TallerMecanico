@@ -21,8 +21,12 @@ const ordenReparacionSchema = new mongoose.Schema(
     fechaEntrega: { type: Date, default: null },
     descripcionProblema: { type: String, required: true, trim: true },
     diagnostico: { type: String, trim: true },
-    trabajosRealizados: { type: String, trim: true },
-    monto: { type: Number, default: 0, min: 0 },
+    trabajosRealizados: { type: String, trim: true, maxlength: 5000 },
+    mecanico: { type: String, trim: true, maxlength: 100 },
+    costoRepuestos: { type: Number, min: 0, max: 1000000000000, validate: Number.isSafeInteger },
+    manoObra: { type: Number, min: 0, max: 1000000000000, validate: Number.isSafeInteger },
+    monto: { type: Number, default: 0, min: 0, max: 1000000000000, validate: Number.isSafeInteger },
+    pagado: { type: Boolean, default: false },
     estado: {
       type: String,
       enum: ESTADOS, // solo acepta esos 5 valores
@@ -31,6 +35,18 @@ const ordenReparacionSchema = new mongoose.Schema(
   },
   { timestamps: true },
 );
+
+ordenReparacionSchema.pre("validate", function () {
+  // Compatibilidad con órdenes anteriores que solo guardaban el total.
+  if (this.costoRepuestos == null && this.manoObra == null) {
+    this.costoRepuestos = 0;
+    this.manoObra = Number(this.monto) || 0;
+  } else {
+    this.costoRepuestos = Number(this.costoRepuestos) || 0;
+    this.manoObra = Number(this.manoObra) || 0;
+  }
+  this.monto = this.costoRepuestos + this.manoObra;
+});
 
 module.exports = mongoose.model("OrdenReparacion", ordenReparacionSchema);
 module.exports.ESTADOS = ESTADOS;

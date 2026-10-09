@@ -1,6 +1,7 @@
 <script setup>
 import { reactive, ref } from "vue";
 import { crearCliente } from "../services/api";
+import { esCorreoValido } from "../utils/validation";
 
 const emit = defineEmits(["cliente-creado"]);
 
@@ -59,7 +60,7 @@ async function guardarCliente() {
               v-model="cliente.apellido"
               outlined
               label="Apellido"
-              :rules="[(valor) => !!valor || 'El apellido es obligatorio']"
+              :rules="[(valor) => !valor || valor.trim().length >= 2 || 'El apellido debe tener al menos 2 caracteres']"
             />
           </div>
         </div>
@@ -68,14 +69,14 @@ async function guardarCliente() {
           v-model="cliente.cedula"
           outlined
           label="Cédula"
-          :rules="[(valor) => !!valor || 'La cédula es obligatoria']"
+          :rules="[(valor) => !!valor && valor.trim().length >= 5 || 'La cédula debe tener al menos 5 caracteres']"
         />
 
         <q-input
           v-model="cliente.telefono"
           outlined
           label="Teléfono"
-          :rules="[(valor) => !!valor || 'El teléfono es obligatorio']"
+          :rules="[(valor) => !!valor && /^[+()\d .-]+$/.test(valor) && valor.replace(/\D/g, '').length >= 7 && valor.replace(/\D/g, '').length <= 15 || 'Ingresa un teléfono válido de 7 a 15 dígitos']"
         />
 
         <q-input
@@ -83,6 +84,7 @@ async function guardarCliente() {
           outlined
           type="email"
           label="Correo electrónico"
+                  :rules="[(valor) => !valor || esCorreoValido(valor.trim()) || 'Ingresa un correo electrónico válido']"
         />
 
         <q-input v-model="cliente.direccion" outlined label="Dirección" />

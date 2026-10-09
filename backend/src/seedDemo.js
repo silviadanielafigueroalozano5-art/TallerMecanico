@@ -171,6 +171,7 @@ async function cargarDatosDemo() {
         anio,
         color,
         cliente: cliente._id,
+        kilometraje: 25000 + indice * 1375,
       });
       vehiculosCreados += 1;
     }
@@ -243,6 +244,7 @@ async function cargarDatosDemo() {
         anio,
         color,
         cliente: cliente._id,
+        kilometraje: 25000 + indice * 1375,
       });
       vehiculosCreados += 1;
     }
@@ -279,6 +281,7 @@ async function cargarDatosDemo() {
         anio,
         color,
         cliente: cliente._id,
+        kilometraje: 25000 + indice * 1375,
       });
       vehiculosCreados += 1;
     }

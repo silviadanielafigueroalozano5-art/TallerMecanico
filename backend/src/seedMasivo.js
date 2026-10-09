@@ -120,6 +120,8 @@ async function insertarDatosMasivos() {
       anio,
       color,
       cliente: clientesInsertados[indice]._id,
+      kilometraje: 30000 + indice * 1250,
+      kilometraje: 30000 + indice * 1250,
     };
   });
   const vehiculosInsertados = await Vehiculo.insertMany(vehiculosInsertar);
@@ -143,6 +145,7 @@ async function insertarDatosMasivos() {
       estado,
       monto: monto + indice * 1500,
       fechaEntrega: estado === "Entregado" ? new Date() : null,
+      pagado: estado === "Entregado",
     };
   });
   const ordenesInsertadas = await OrdenReparacion.insertMany(ordenesInsertar);

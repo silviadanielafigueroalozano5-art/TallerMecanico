@@ -111,35 +111,28 @@ exports.crearCliente = async (req, res) => {
   }
 };
 
-// PUT /api/clientes/:id - actualizar
+// PUT /api/clientes/:id - actualizar datos validados
 exports.actualizarCliente = async (req, res) => {
   try {
-    const cliente = await Cliente.findByIdAndUpdate(req.params.id, req.body, {
-      new: true, // devuelve el documento ya actualizado
-      runValidators: true, // aplica las validaciones del esquema
-    });
-    if (!cliente) {
-      return res.status(404).json({ mensaje: "Cliente no encontrado" });
-    }
+    const cliente = await Cliente.findByIdAndUpdate(req.params.id, { $set: req.body }, { new: true, runValidators: true });
+    if (!cliente) return res.status(404).json({ mensaje: "Cliente no encontrado." });
     res.json(cliente);
   } catch (error) {
-    res
-      .status(400)
-      .json({ mensaje: "Error al actualizar cliente", error: error.message });
+    if (error.code === 11000) return res.status(409).json({ mensaje: "Ya existe un propietario con esa cédula." });
+    res.status(400).json({ mensaje: "No fue posible actualizar el cliente.", error: error.message });
   }
 };
 
-// DELETE /api/clientes/:id - eliminar
+// DELETE /api/clientes/:id - no deja vehículos huérfanos
 exports.eliminarCliente = async (req, res) => {
   try {
-    const cliente = await Cliente.findByIdAndDelete(req.params.id);
-    if (!cliente) {
-      return res.status(404).json({ mensaje: "Cliente no encontrado" });
-    }
-    res.json({ mensaje: "Cliente eliminado" });
+    const cliente = await Cliente.findById(req.params.id);
+    if (!cliente) return res.status(404).json({ mensaje: "Cliente no encontrado." });
+    const tieneVehiculos = await Vehiculo.exists({ cliente: cliente._id });
+    if (tieneVehiculos) return res.status(409).json({ mensaje: "No se puede eliminar un cliente que todavía tiene vehículos registrados. Reasigna o elimina primero los vehículos sin historial." });
+    await cliente.deleteOne();
+    res.json({ mensaje: "Cliente eliminado." });
   } catch (error) {
-    res
-      .status(500)
-      .json({ mensaje: "Error al eliminar cliente", error: error.message });
+    res.status(500).json({ mensaje: "Error al eliminar cliente.", error: error.message });
   }
 };

@@ -5,18 +5,22 @@ require("dotenv").config({ path: path.resolve(__dirname, "../.env") });
 
 const conectarDB = require("./config/database");
 const { sincronizarHistorialBase } = require("./controllers/orden.controller");
+const { validarConfiguracionTokens } = require("./security/tokens");
 
 const app = express();
 
 const origenFrontend = process.env.FRONTEND_URL;
 app.use(cors(origenFrontend ? { origin: origenFrontend } : undefined));
-app.use(express.json());
+app.use(express.json({ limit: "1mb" }));
 
 app.get("/", (req, res) => {
     res.json({
         mensaje: "API del taller mecánico funcionando"
     });
 });
+
+// Inicio de sesión (público)
+app.use("/api/auth", require("./routes/auth.routes"));
 
 // Rutas de la API
 app.use("/api/clientes", require("./routes/cliente.routes"));

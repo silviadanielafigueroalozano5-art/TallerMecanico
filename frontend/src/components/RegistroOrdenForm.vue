@@ -15,28 +15,26 @@ const orden = reactive({
   descripcionProblema: '',
   diagnostico: '',
   trabajosRealizados: '',
-  monto: 0,
+  costoRepuestos: 0,
+  manoObra: 0,
+  mecanico: '',
 })
 
 const guardando = ref(false)
 const error = ref('')
 
 async function guardarOrden() {
-  guardando.value = true
   error.value = ''
-
+  const repuestos = Number(orden.costoRepuestos || 0)
+  const manoObra = Number(orden.manoObra || 0)
+  if (!orden.descripcionProblema.trim() || orden.descripcionProblema.trim().length < 5) { error.value = 'Describe el problema con al menos 5 caracteres.'; return }
+  if (!Number.isSafeInteger(repuestos) || repuestos < 0 || !Number.isSafeInteger(manoObra) || manoObra < 0 || repuestos + manoObra > 1000000000000) { error.value = 'Los costos deben ser enteros no negativos y el total no puede superar 1.000.000.000.000 COP.'; return }
+  guardando.value = true
   try {
-    const nuevaOrden = await crearOrden({
-      ...orden,
-      vehiculo: props.vehiculo._id,
-    })
-
+    const nuevaOrden = await crearOrden({ descripcionProblema: orden.descripcionProblema.trim(), diagnostico: orden.diagnostico.trim(), trabajosRealizados: orden.trabajosRealizados.trim(), costoRepuestos: repuestos, manoObra, mecanico: orden.mecanico.trim(), vehiculo: props.vehiculo._id })
     emit('orden-creada', nuevaOrden)
-  } catch (err) {
-    error.value = err.message
-  } finally {
-    guardando.value = false
-  }
+  } catch (err) { error.value = err.message }
+  finally { guardando.value = false }
 }
 </script>
 
@@ -76,13 +74,9 @@ async function guardarOrden() {
           label="Trabajos realizados"
         />
 
-        <q-input
-          v-model.number="orden.monto"
-          outlined
-          type="number"
-          min="0"
-          label="Monto"
-        />
+        <q-input v-model.number="orden.costoRepuestos" outlined type="number" min="0" step="1" label="Costo de repuestos (COP)" />
+        <q-input v-model.number="orden.manoObra" outlined type="number" min="0" step="1" label="Mano de obra (COP)" />
+        <q-input v-model="orden.mecanico" outlined maxlength="100" label="Mecánico asignado (opcional)" />
 
         <q-banner v-if="error" rounded class="bg-red-2 text-red-10">
           {{ error }}

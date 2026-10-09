@@ -4,6 +4,7 @@ import { storeToRefs } from 'pinia'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useWorkshopStore, obtenerEstadosDisponibles } from '../stores/workshop'
+import { esCorreoValido } from '../utils/validation'
 
 const estados = ['Recibido', 'En Diagnóstico', 'En Reparación', 'Listo', 'Entregado']
 const tiposReparacion = [
@@ -54,27 +55,30 @@ const noEncontrado = ref(false)
 const propietarioExistente = ref(false)
 const filtroSeguimiento = ref('')
 const filtroHistorialTexto = ref('')
+const edicionesOrden = reactive({})
+const guardandoOrdenId = ref('')
 const etapaRegistro = ref(1)
-const estadosIniciales = [...estados]
 
 const propietarioForm = reactive({
   nombre: '',
   cedula: '',
   telefono: '',
+  email: '',
 })
 const vehiculoForm = reactive({
   placa: '',
   marca: '',
   modelo: '',
   anio: new Date().getFullYear(),
+  kilometraje: '',
 })
 const ordenForm = reactive({
   tiposReparacion: [],
-  tipoReparacion: '',
   otroTipo: '',
-  monto: '',
-  fechaIngreso: new Date().toISOString().slice(0, 10),
-  estado: 'Recibido',
+  costoRepuestos: 0,
+  manoObra: 0,
+  mecanico: '',
+  fechaIngreso: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10),
 })
 
 function normalizarTexto(valor) {
@@ -207,68 +211,51 @@ function iniciarRegistro() {
   etapaRegistro.value = 1
   propietarioExistente.value = false
   limpiarMensajes()
-
+  propietarioForm.nombre = ''
+  propietarioForm.email = ''
+  vehiculoForm.kilometraje = ''
   if (tipoBusqueda.value === 'placa') {
     vehiculoForm.placa = termino.value.trim().toUpperCase()
-    propietarioForm.nombre = ''
     propietarioForm.cedula = ''
     propietarioForm.telefono = ''
   } else {
     propietarioForm.cedula = termino.value.trim()
-    propietarioForm.nombre = ''
     propietarioForm.telefono = ''
     vehiculoForm.placa = ''
   }
 }
 
 async function buscar() {
-  if (!termino.value.trim()) return
+  const valor = termino.value.trim()
+  if (!valor) { error.value = tipoBusqueda.value === 'placa' ? 'Escribe la placa del vehículo.' : 'Escribe la cédula del propietario.'; return }
+  if (tipoBusqueda.value === 'placa' && !/^[A-Za-z0-9]{5,8}$/.test(valor.replace(/[\s-]/g, ''))) { error.value = 'La placa debe tener entre 5 y 8 letras o números.'; return }
+  if (tipoBusqueda.value === 'cedula' && !/^[A-Za-z0-9 .-]{5,20}$/.test(valor)) { error.value = 'La cédula debe tener entre 5 y 20 caracteres válidos.'; return }
   cargando.value = true
   limpiarMensajes()
   noEncontrado.value = false
   etapaRegistro.value = 1
   propietarioExistente.value = false
   workshop.limpiarBusqueda()
-
   try {
-    if (tipoBusqueda.value === 'placa') {
-      abrirFicha(await workshop.buscarPorPlaca(termino.value))
-      return
-    }
-
-    const resultado = await workshop.buscarPorCedula(termino.value)
-    if (resultado.vehiculos.length === 1) {
-      await seleccionarVehiculo(resultado.vehiculos[0])
-    } else if (!resultado.vehiculos.length) {
+    if (tipoBusqueda.value === 'placa') { abrirFicha(await workshop.buscarPorPlaca(valor)); return }
+    const resultado = await workshop.buscarPorCedula(valor)
+    if (resultado.vehiculos.length === 1) await seleccionarVehiculo(resultado.vehiculos[0])
+    else if (!resultado.vehiculos.length) {
       noEncontrado.value = true
-      propietarioForm.nombre = [resultado.cliente.nombre, resultado.cliente.apellido]
-        .filter(Boolean)
-        .join(' ')
+      propietarioForm.nombre = [resultado.cliente.nombre, resultado.cliente.apellido].filter(Boolean).join(' ')
       propietarioForm.cedula = resultado.cliente.cedula
       propietarioForm.telefono = resultado.cliente.telefono || ''
+      propietarioForm.email = resultado.cliente.email || ''
       etapaRegistro.value = 2
       propietarioExistente.value = true
     }
   } catch (err) {
     if (err.status === 404) {
       noEncontrado.value = true
-      if (tipoBusqueda.value === 'cedula') {
-        propietarioForm.cedula = termino.value.trim()
-        propietarioForm.nombre = ''
-        propietarioForm.telefono = ''
-        vehiculoForm.placa = ''
-      } else {
-        vehiculoForm.placa = termino.value.trim().toUpperCase()
-        propietarioForm.nombre = ''
-        propietarioForm.cedula = ''
-        propietarioForm.telefono = ''
-      }
-    } else {
-      error.value = err.message || 'No fue posible completar la búsqueda.'
-    }
-  } finally {
-    cargando.value = false
-  }
+      if (tipoBusqueda.value === 'cedula') { propietarioForm.cedula = valor; propietarioForm.nombre = ''; propietarioForm.telefono = ''; propietarioForm.email = ''; vehiculoForm.placa = '' }
+      else { vehiculoForm.placa = valor.toUpperCase(); propietarioForm.nombre = ''; propietarioForm.cedula = ''; propietarioForm.telefono = ''; propietarioForm.email = '' }
+    } else error.value = err.message || 'No fue posible completar la búsqueda.'
+  } finally { cargando.value = false }
 }
 
 function abrirFicha(resultado) {
@@ -304,103 +291,88 @@ async function seleccionarVehiculo(auto) {
 }
 
 async function registrarPropietario() {
-  guardando.value = true
   limpiarMensajes()
-  const partesNombre = propietarioForm.nombre.trim().split(/\s+/)
+  const nombreCompleto = propietarioForm.nombre.trim().replace(/\s+/g, ' ')
+  const cedula = propietarioForm.cedula.trim()
+  const telefono = propietarioForm.telefono.trim()
+  const email = propietarioForm.email.trim()
+  if (nombreCompleto.length < 2 || nombreCompleto.length > 80) { error.value = 'Escribe un nombre de al menos 2 caracteres y máximo 80.'; return }
+  if (!/^[\p{L} .'-]+$/u.test(nombreCompleto)) { error.value = 'El nombre solo puede contener letras, espacios, puntos, apóstrofes o guiones.'; return }
+  if (!/^[\p{L}\p{N} .-]{5,20}$/u.test(cedula)) { error.value = 'La cédula debe tener entre 5 y 20 caracteres válidos.'; return }
+  const digitosTelefono = telefono.replace(/\D/g, '')
+  if (!/^[+()\d .-]+$/.test(telefono) || digitosTelefono.length < 7 || digitosTelefono.length > 15) { error.value = 'El teléfono debe tener entre 7 y 15 dígitos.'; return }
+  if (email && !esCorreoValido(email)) { error.value = 'Ingresa un correo electrónico válido.'; return }
+  guardando.value = true
+  const partesNombre = nombreCompleto.split(' ')
   try {
-    await workshop.registrarCliente({
-      nombre: partesNombre.shift() || '',
-      apellido: partesNombre.join(' '),
-      cedula: propietarioForm.cedula.trim(),
-      telefono: propietarioForm.telefono.trim(),
-    })
+    await workshop.registrarCliente({ nombre: partesNombre.shift() || '', apellido: partesNombre.join(' '), cedula, telefono, email })
     etapaRegistro.value = 2
-  } catch (err) {
-    error.value = err.message || 'No fue posible registrar al propietario.'
-  } finally {
-    guardando.value = false
-  }
+  } catch (err) { error.value = err.message || 'No fue posible registrar al propietario.' }
+  finally { guardando.value = false }
 }
 
 async function registrarVehiculo() {
-  guardando.value = true
   limpiarMensajes()
+  const placa = vehiculoForm.placa.trim()
+  const kilometrajeIngresado = vehiculoForm.kilometraje
+  if (kilometrajeIngresado === '' || kilometrajeIngresado === null || kilometrajeIngresado === undefined) { error.value = 'Ingresa el kilometraje actual del vehículo.'; return }
+  const kilometraje = Number(kilometrajeIngresado)
+  if (!/^[A-Za-z0-9]{5,8}$/.test(placa.replace(/[\s-]/g, ''))) { error.value = 'La placa debe tener entre 5 y 8 letras o números.'; return }
+  if (vehiculoForm.marca.trim().length < 2 || vehiculoForm.marca.trim().length > 80) { error.value = 'La marca debe tener entre 2 y 80 caracteres.'; return }
+  if (!vehiculoForm.modelo.trim() || vehiculoForm.modelo.trim().length > 80) { error.value = 'El modelo debe tener entre 2 y 80 caracteres.'; return }
+  if (!Number.isInteger(Number(vehiculoForm.anio)) || Number(vehiculoForm.anio) < 1900 || Number(vehiculoForm.anio) > new Date().getFullYear() + 1) { error.value = 'El año del vehículo no es válido.'; return }
+  if (!Number.isSafeInteger(kilometraje) || kilometraje < 0 || kilometraje > 2000000) { error.value = 'Ingresa el kilometraje actual como un entero entre 0 y 2.000.000.'; return }
+  guardando.value = true
   try {
-    const nuevo = await workshop.registrarVehiculo({
-      ...vehiculoForm,
-      placa: vehiculoForm.placa.trim().toUpperCase(),
-      anio: Number(vehiculoForm.anio),
-    })
-    pantalla.value = 'ficha'
-    noEncontrado.value = false
-    aviso.value = 'Vehículo registrado. Ya puedes crear su primera orden.'
+    const nuevo = await workshop.registrarVehiculo({ ...vehiculoForm, placa: placa.toUpperCase(), marca: vehiculoForm.marca.trim(), modelo: vehiculoForm.modelo.trim(), anio: Number(vehiculoForm.anio), kilometraje })
+    pantalla.value = 'ficha'; noEncontrado.value = false; aviso.value = 'Vehículo registrado. Ya puedes crear su primera orden.'
     router.push({ name: 'ficha-vehiculo', params: { placa: nuevo.placa } })
-  } catch (err) {
-    error.value = err.message || 'No fue posible registrar el vehículo.'
-  } finally {
-    guardando.value = false
-  }
+  } catch (err) { error.value = err.message || 'No fue posible registrar el vehículo.' }
+  finally { guardando.value = false }
 }
 
 function abrirNuevaOrden() {
   ordenForm.tiposReparacion = []
-  ordenForm.tipoReparacion = ''
   ordenForm.otroTipo = ''
-  ordenForm.monto = ''
-  ordenForm.fechaIngreso = new Date().toISOString().slice(0, 10)
-  ordenForm.estado = 'Recibido'
+  ordenForm.costoRepuestos = 0
+  ordenForm.manoObra = 0
+  ordenForm.mecanico = ''
+  const ahora = new Date()
+  ordenForm.fechaIngreso = new Date(ahora.getTime() - ahora.getTimezoneOffset() * 60000).toISOString().slice(0, 10)
   pantalla.value = 'orden'
   limpiarMensajes()
   router.push({ name: 'nueva-orden', params: { placa: vehiculo.value.placa } })
 }
 
-function formatearMonto() {
-  const digitos = String(ordenForm.monto).replace(/\D/g, '').slice(0, 12)
-  if (!digitos) {
-    ordenForm.monto = ''
-    return
-  }
-  ordenForm.monto = new Intl.NumberFormat('es-CO').format(Number(digitos))
+function formatoCosto(event, campo) {
+  const valor = event.target.value
+  if (valor === '') { ordenForm[campo] = ''; return }
+  const numero = Number(valor)
+  ordenForm[campo] = Number.isFinite(numero) ? numero : ''
 }
 
 async function guardarOrden() {
-  guardando.value = true
   limpiarMensajes()
-
-  const tiposSeleccionados = (Array.isArray(ordenForm.tiposReparacion) ? ordenForm.tiposReparacion : [])
-    .filter(Boolean)
-
-  const descripcion = [...tiposSeleccionados]
-  if (tiposSeleccionados.includes('Otro')) {
-    const otro = ordenForm.otroTipo.trim()
-    if (!otro) {
-      guardando.value = false
-      error.value = 'Indica cuál es la reparación adicional que elegiste como "Otro".'
-      return
-    }
-    descripcion.push(otro)
-  }
-
-  if (!descripcion.length) {
-    guardando.value = false
-    error.value = 'Selecciona al menos un tipo de reparación.'
-    return
-  }
+  const tipos = [...new Set(ordenForm.tiposReparacion.filter(Boolean))]
+  if (!tipos.length) { error.value = 'Selecciona al menos un tipo de reparación.'; return }
+  if (tipos.includes('Otro') && ordenForm.otroTipo.trim().length < 3) { error.value = 'Describe la reparación seleccionada como "Otro" (mínimo 3 caracteres).'; return }
+  const repuestos = ordenForm.costoRepuestos === '' ? 0 : Number(ordenForm.costoRepuestos)
+  const manoObra = ordenForm.manoObra === '' ? 0 : Number(ordenForm.manoObra)
+  if (!Number.isSafeInteger(repuestos) || repuestos < 0 || !Number.isSafeInteger(manoObra) || manoObra < 0 || repuestos + manoObra > 1000000000000) { error.value = 'Los costos de repuestos y mano de obra deben ser enteros no negativos y el total no puede superar 1.000.000.000.000 COP.'; return }
+  if (ordenForm.mecanico.trim() && ordenForm.mecanico.trim().length < 2) { error.value = 'El nombre del mecánico debe tener al menos 2 caracteres.'; return }
+  guardando.value = true
   try {
     await workshop.crearOrdenReparacion({
-      descripcionProblema: descripcion.join(', '),
-      monto: Number(String(ordenForm.monto).replace(/\D/g, '') || 0),
-      fechaIngreso: new Date(`${ordenForm.fechaIngreso}T12:00:00`).toISOString(),
-      estado: ordenForm.estado,
+      descripcionProblema: tipos.map((tipo) => tipo === 'Otro' ? ordenForm.otroTipo.trim() : tipo).join(', '),
+      costoRepuestos: repuestos,
+      manoObra,
+      mecanico: ordenForm.mecanico.trim(),
     })
     pantalla.value = 'ficha'
-    aviso.value = 'La orden de reparación se creó correctamente.'
+    aviso.value = 'La orden se creó en estado Recibido.'
     router.push({ name: 'ficha-vehiculo', params: { placa: vehiculo.value.placa } })
-  } catch (err) {
-    error.value = err.message || 'No fue posible crear la orden.'
-  } finally {
-    guardando.value = false
-  }
+  } catch (err) { error.value = err.message || 'No fue posible crear la orden.' }
+  finally { guardando.value = false }
 }
 
 async function abrirHistorial() {
@@ -461,16 +433,50 @@ async function cargarHistorialGeneral() {
   }
 }
 
-async function actualizarEstado(orden, estado) {
+async function actualizarEstado(orden, evento) {
+  const control = evento?.target
+  const estado = typeof evento === 'string' ? evento : control?.value
   limpiarMensajes()
+  const pagado = estado === 'Entregado' ? window.confirm('Confirma que el cliente pagó la cuenta completa y retiró el vehículo.') : false
+  if (estado === 'Entregado' && !pagado) { if (control) control.value = orden.estado; return }
   try {
-    if (!obtenerEstadosDisponibles(orden.estado).includes(estado)) {
-      throw new Error('No puedes saltarte etapas del proceso. Avanza en orden.')
-    }
-    await workshop.actualizarEstadoOrden(orden, estado)
+    if (!obtenerEstadosDisponibles(orden.estado).includes(estado)) throw new Error('No puedes saltarte etapas del proceso. Avanza en orden.')
+    await workshop.actualizarEstadoOrden(orden, estado, pagado)
   } catch (err) {
+    if (control) control.value = orden.estado
     error.value = err.message || 'No fue posible actualizar el estado.'
   }
+}
+
+function obtenerEdicionOrden(orden) {
+  if (!edicionesOrden[orden._id]) edicionesOrden[orden._id] = {
+    diagnostico: orden.diagnostico || '',
+    trabajosRealizados: orden.trabajosRealizados || '',
+    mecanico: orden.mecanico || '',
+    costoRepuestos: orden.costoRepuestos ?? 0,
+    manoObra: orden.manoObra ?? (orden.costoRepuestos == null ? Number(orden.monto) || 0 : 0),
+  }
+  return edicionesOrden[orden._id]
+}
+
+async function guardarDetallesOrden(orden) {
+  const datos = obtenerEdicionOrden(orden)
+  const diagnostico = datos.diagnostico.trim()
+  const trabajosRealizados = datos.trabajosRealizados.trim()
+  const mecanico = datos.mecanico.trim()
+  const repuestos = Number(datos.costoRepuestos || 0)
+  const manoObra = Number(datos.manoObra || 0)
+  if ((diagnostico && diagnostico.length < 3) || diagnostico.length > 5000) { error.value = 'El diagnóstico debe tener al menos 3 caracteres o quedar vacío (máximo 5.000).'; return }
+  if ((trabajosRealizados && trabajosRealizados.length < 3) || trabajosRealizados.length > 5000) { error.value = 'Los trabajos realizados deben tener al menos 3 caracteres o quedar vacíos (máximo 5.000).'; return }
+  if ((mecanico && mecanico.length < 2) || mecanico.length > 100) { error.value = 'El mecánico debe tener al menos 2 caracteres o quedar vacío (máximo 100).'; return }
+  if (!Number.isSafeInteger(repuestos) || repuestos < 0 || !Number.isSafeInteger(manoObra) || manoObra < 0 || repuestos + manoObra > 1000000000000) { error.value = 'Los costos deben ser enteros no negativos y el total no puede superar 1.000.000.000.000 COP.'; return }
+  error.value = ''
+  guardandoOrdenId.value = orden._id
+  try {
+    await workshop.guardarDetallesOrden(orden, { diagnostico, trabajosRealizados, mecanico, costoRepuestos: repuestos, manoObra })
+    aviso.value = 'Se guardaron los detalles de la orden.'
+  } catch (err) { error.value = err.message || 'No fue posible guardar los detalles de la orden.' }
+  finally { guardandoOrdenId.value = '' }
 }
 
 function formatoFecha(fecha) {
@@ -552,7 +558,6 @@ watch(
               @click="cargarSeguimiento"
             >
               <span class="material-icons">view_kanban</span><span>Seguimiento</span>
-              <span class="nav-count">{{ ordenes.length }}</span>
             </button>
             <button
               class="nav-link"
@@ -617,6 +622,9 @@ watch(
                   <input
                     id="search-input"
                     v-model="termino"
+                    required
+                    maxlength="20"
+                    autocomplete="off"
                     :placeholder="tipoBusqueda === 'placa' ? 'Ej. ABC-123' : 'Número de cédula / CC'"
                     @keyup.enter="buscar"
                   />
@@ -638,25 +646,25 @@ watch(
           <section class="order-summary" aria-label="Estado de las órdenes">
             <div class="summary-label">ESTADO DE LAS ÓRDENES</div>
             <div class="summary-grid">
-              <article class="summary-card">
-                <span class="summary-dot dot-progress"></span>
-                 <div><span>Recibidos</span><strong>{{ resumenOrdenes.recibidos }}</strong></div>
+              <article class="summary-card summary-recibido">
+                <span class="summary-dot dot-received"></span>
+                <div><span>Recibidos</span><strong>{{ resumenOrdenes.recibidos }}</strong></div>
               </article>
-              <article class="summary-card">
-                <span class="summary-dot dot-ready"></span>
-               <div><span>En diagnóstico</span><strong>{{ resumenOrdenes.diagnostico }}</strong></div>
-              </article>
-              <article class="summary-card">
+              <article class="summary-card summary-diagnostico">
                 <span class="summary-dot dot-diagnosis"></span>
+                <div><span>En diagnóstico</span><strong>{{ resumenOrdenes.diagnostico }}</strong></div>
+              </article>
+              <article class="summary-card summary-reparacion">
+                <span class="summary-dot dot-repair"></span>
                 <div><span>En reparación</span><strong>{{ resumenOrdenes.reparacion }}</strong></div>
               </article>
-              <article class="summary-card">
-                <span class="summary-dot dot-received"></span>
+              <article class="summary-card summary-proceso">
+                <span class="summary-dot dot-progress"></span>
                 <div><span>En proceso</span><strong>{{ resumenOrdenes.enProceso }}</strong></div>
               </article>
-              <article class="summary-card">
-                <span class="summary-dot dot-repair"></span>
-                <div><span>Listos para entregar</span><strong>{{ resumenOrdenes.listos }}</strong></div>
+              <article class="summary-card summary-listo">
+                <span class="summary-dot dot-ready"></span>
+                <div><span>Listos</span><strong>{{ resumenOrdenes.listos }}</strong></div>
               </article>
             </div>
           </section>
@@ -691,23 +699,22 @@ watch(
               <i></i>
               <div class="step" :class="{ current: etapaRegistro === 2 }"><span>2</span> Vehículo</div>
             </div>
-            <form v-if="etapaRegistro === 1" class="form-grid" @submit.prevent="registrarPropietario">
-              <label class="field"><span>Nombre completo <b>*</b></span><input v-model="propietarioForm.nombre" required placeholder="Nombre y apellido" /></label>
-              <label class="field"><span>Cédula <b>*</b></span><input v-model="propietarioForm.cedula" required placeholder="Número de identificación" /></label>
-              <label class="field field-wide"><span>Teléfono <b>*</b></span><input v-model="propietarioForm.telefono" required placeholder="Número de contacto" /></label>
+            <form v-if="etapaRegistro === 1" class="form-grid" @submit.prevent="registrarPropietario" novalidate>
+              <label class="field field-wide"><span>Nombre completo <b>*</b></span><input v-model="propietarioForm.nombre" required minlength="2" maxlength="80" autocomplete="name" placeholder="Nombre y apellido" /></label>
+              <label class="field"><span>Cédula <b>*</b></span><input v-model="propietarioForm.cedula" required minlength="5" maxlength="20" autocomplete="off" placeholder="Número de identificación" /></label>
+              <label class="field"><span>Teléfono <b>*</b></span><input v-model="propietarioForm.telefono" required maxlength="24" type="tel" autocomplete="tel" placeholder="Número de contacto" /></label>
+              <label class="field field-wide"><span>Correo electrónico (opcional)</span><input v-model="propietarioForm.email" type="email" maxlength="254" autocomplete="email" placeholder="cliente@ejemplo.com" /></label>
               <div class="form-actions field-wide"><button class="primary-button" :disabled="guardando">{{ guardando ? 'Guardando…' : 'Continuar' }}<span class="material-icons">arrow_forward</span></button></div>
             </form>
-            <form v-else class="form-grid" @submit.prevent="registrarVehiculo">
-              <label class="field"><span>Placa <b>*</b></span><input v-model="vehiculoForm.placa" required placeholder="Ej. ABC-123" /></label>
-              <label class="field"><span>Marca <b>*</b></span><input v-model="vehiculoForm.marca" required placeholder="Ej. Toyota" /></label>
-              <label class="field"><span>Modelo <b>*</b></span><input v-model="vehiculoForm.modelo" required placeholder="Ej. Corolla" /></label>
-              <label class="field"><span>Año <b>*</b></span><input v-model.number="vehiculoForm.anio" type="number" min="1900" :max="new Date().getFullYear() + 1" required /></label>
-              <div class="form-actions field-wide">
-                <button type="button" class="secondary-button" @click="volverPasoRegistro">{{ propietarioExistente ? 'Volver a búsqueda' : 'Atrás' }}</button>
-                <button class="primary-button" :disabled="guardando">{{ guardando ? 'Guardando…' : 'Guardar vehículo' }}<span class="material-icons">check</span></button>
-              </div>
+            <form v-else class="form-grid" @submit.prevent="registrarVehiculo" novalidate>
+              <label class="field"><span>Placa <b>*</b></span><input v-model="vehiculoForm.placa" required minlength="5" maxlength="9" autocomplete="off" placeholder="Ej. ABC-123" /></label>
+              <label class="field"><span>Marca <b>*</b></span><input v-model="vehiculoForm.marca" required minlength="2" maxlength="80" placeholder="Ej. Toyota" /></label>
+              <label class="field"><span>Modelo <b>*</b></span><input v-model="vehiculoForm.modelo" required minlength="1" maxlength="80" placeholder="Ej. Corolla" /></label>
+              <label class="field"><span>Año <b>*</b></span><input v-model.number="vehiculoForm.anio" type="number" min="1900" :max="new Date().getFullYear() + 1" step="1" required /></label>
+              <label class="field field-wide"><span>Kilometraje actual <b>*</b></span><input v-model.number="vehiculoForm.kilometraje" type="number" min="0" max="2000000" step="1" inputmode="numeric" required placeholder="Ej. 62500" /></label>
+              <div class="form-actions field-wide"><button type="button" class="secondary-button" @click="volverPasoRegistro">{{ propietarioExistente ? 'Volver a búsqueda' : 'Atrás' }}</button><button class="primary-button" :disabled="guardando">{{ guardando ? 'Guardando…' : 'Guardar vehículo' }}<span class="material-icons">check</span></button></div>
             </form>
-          </section>
+</section>
 
         </template>
 
@@ -724,6 +731,7 @@ watch(
             <div class="summary-divider"></div>
             <div class="car-spec"><span>MARCA Y MODELO</span><strong>{{ vehiculo?.marca }} {{ vehiculo?.modelo }}</strong></div>
             <div class="car-spec"><span>AÑO</span><strong>{{ vehiculo?.anio || '—' }}</strong></div>
+            <div class="car-spec"><span>KILOMETRAJE</span><strong>{{ vehiculo?.kilometraje ?? '—' }} km</strong></div>
             <div class="car-owner"><div class="avatar">{{ normalizarTexto(nombrePropietario).slice(0, 2).toUpperCase() }}</div><div><span>PROPIETARIO</span><strong>{{ nombrePropietario }}</strong><small>{{ vehiculo?.cliente?.telefono || vehiculo?.cliente?.cedula || 'Sin contacto registrado' }}</small></div></div>
           </section>
 
@@ -780,10 +788,13 @@ watch(
                   </label>
                 </div>
               </div>
-              <label v-if="ordenForm.tiposReparacion.includes('Otro')" class="field field-wide"><span>¿Cuál? <b>*</b></span><input v-model="ordenForm.otroTipo" required placeholder="Escribe el tipo de reparación…" /></label>
-              <label class="field"><span>Costo estimado (COP)</span><div class="money-input"><span>$</span><input v-model="ordenForm.monto" type="text" inputmode="numeric" placeholder="0" @input="formatearMonto" /></div></label>
+              <label v-if="ordenForm.tiposReparacion.includes('Otro')" class="field field-wide"><span>¿Cuál? <b>*</b></span><input v-model="ordenForm.otroTipo" required maxlength="2000" placeholder="Escribe el tipo de reparación…" /></label>
+              <label class="field"><span>Repuestos (COP)</span><div class="money-input"><span>$</span><input v-model.number="ordenForm.costoRepuestos" type="number" min="0" max="1000000000000" step="1" inputmode="numeric" @input="formatoCosto($event, 'costoRepuestos')" placeholder="0" /></div></label>
+              <label class="field"><span>Mano de obra (COP)</span><div class="money-input"><span>$</span><input v-model.number="ordenForm.manoObra" type="number" min="0" max="1000000000000" step="1" inputmode="numeric" @input="formatoCosto($event, 'manoObra')" placeholder="0" /></div></label>
+              <div class="field"><span>Total estimado</span><strong>{{ formatoDinero((Number(ordenForm.costoRepuestos) || 0) + (Number(ordenForm.manoObra) || 0)) }}</strong></div>
+              <label class="field field-wide"><span>Mecánico asignado (opcional)</span><input v-model="ordenForm.mecanico" minlength="2" maxlength="100" autocomplete="off" placeholder="Nombre del mecánico" /></label>
               <label class="field"><span>Fecha de ingreso <b>*</b></span><div class="money-input"><span class="material-icons">today</span><input :value="ordenForm.fechaIngreso" type="date" readonly disabled /></div></label>
-              <label class="field field-wide"><span>Estado inicial <b>*</b></span><select v-model="ordenForm.estado" required><option v-for="estado in estadosIniciales" :key="estado" :value="estado">{{ estado }}</option></select></label>
+              <div class="field field-wide"><span>Estado inicial</span><strong>Recibido</strong></div>
               <div class="form-actions field-wide"><button type="button" class="secondary-button" @click="pantalla = 'ficha'">Cancelar</button><button class="primary-button" :disabled="guardando">{{ guardando ? 'Creando orden…' : 'Crear orden' }}<span class="material-icons">arrow_forward</span></button></div>
             </form>
           </section>
@@ -904,14 +915,27 @@ watch(
           <section v-else class="kanban-board">
             <div v-for="(grupo, index) in gruposOrdenes.slice(0, 4)" :key="grupo.estado" class="kanban-column">
               <div class="kanban-header"><span class="kanban-dot" :class="`dot-${index}`"></span><strong>{{ grupo.estado }}</strong><span class="column-count">{{ grupo.ordenes.length }}</span></div>
-              <article v-for="orden in grupo.ordenes" :key="orden._id" class="order-card">
+              <article v-for="orden in grupo.ordenes" :key="orden._id" :class="['order-card', `card-${orden.estado.toLowerCase().replaceAll(' ', '-')}`]">
                 <div class="order-card-top"><span class="order-ref">ORD-{{ String(orden._id).slice(-5).toUpperCase() }}</span><span class="material-icons">more_horiz</span></div>
                 <h3>{{ normalizarTexto(orden.descripcionProblema) }}</h3>
                 <div class="order-car"><span class="material-icons">directions_car</span><strong>{{ normalizarTexto(orden.vehiculo?.marca) }} {{ normalizarTexto(orden.vehiculo?.modelo) }}</strong></div>
                 <div class="order-plate">{{ orden.vehiculo?.placa }}</div>
                 <div class="order-client"><div class="avatar small-avatar">{{ normalizarTexto(orden.vehiculo?.cliente?.nombre || 'CL').slice(0, 2).toUpperCase() }}</div><span>{{ normalizarTexto(orden.vehiculo?.cliente?.nombre) }} {{ normalizarTexto(orden.vehiculo?.cliente?.apellido) }}</span><span class="order-date">{{ formatoFecha(orden.fechaIngreso) }}</span></div>
-                <div class="order-card-footer"><strong>{{ formatoDinero(orden.monto) }}</strong><select :value="orden.estado" aria-label="Actualizar estado" @change="actualizarEstado(orden, $event.target.value)"><option v-for="estado in obtenerEstadosDisponibles(orden.estado)" :key="estado" :value="estado">{{ estado }}</option></select></div>
-              </article>
+                <div class="order-card-footer"><strong>{{ formatoDinero(orden.monto) }}</strong><select :value="orden.estado" aria-label="Actualizar estado" @change="actualizarEstado(orden, $event)"><option v-for="estado in obtenerEstadosDisponibles(orden.estado)" :key="estado" :value="estado">{{ estado }}</option></select></div>
+              
+                <details class="order-edit">
+                  <summary>Diagnóstico, trabajo y costos</summary>
+                  <div class="order-edit-fields">
+                    <label>Diagnóstico<textarea v-model="obtenerEdicionOrden(orden).diagnostico" maxlength="5000" rows="2" placeholder="Qué se encontró"></textarea></label>
+                    <label>Trabajo realizado<textarea v-model="obtenerEdicionOrden(orden).trabajosRealizados" maxlength="5000" rows="2" placeholder="Qué se reparó"></textarea></label>
+                    <label>Mecánico<input v-model="obtenerEdicionOrden(orden).mecanico" maxlength="100" placeholder="Nombre del mecánico"></label>
+                    <label>Repuestos (COP)<input v-model.number="obtenerEdicionOrden(orden).costoRepuestos" type="number" min="0" max="1000000000000" step="1"></label>
+                    <label>Mano de obra (COP)<input v-model.number="obtenerEdicionOrden(orden).manoObra" type="number" min="0" max="1000000000000" step="1"></label>
+                    <strong>Total: {{ formatoDinero((Number(obtenerEdicionOrden(orden).costoRepuestos) || 0) + (Number(obtenerEdicionOrden(orden).manoObra) || 0)) }}</strong>
+                    <button type="button" class="primary-button" :disabled="guardandoOrdenId === orden._id" @click="guardarDetallesOrden(orden)">{{ guardandoOrdenId === orden._id ? 'Guardando…' : 'Guardar cambios' }}</button>
+                  </div>
+                </details>
+</article>
               <div v-if="!grupo.ordenes.length" class="column-empty">No hay órdenes en esta etapa.</div>
             </div>
           </section>

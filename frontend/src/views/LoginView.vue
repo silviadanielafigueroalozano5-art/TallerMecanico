@@ -2,6 +2,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { esCorreoValido } from '../utils/validation'
 
 const route = useRoute()
 const router = useRouter()
@@ -29,37 +30,26 @@ onMounted(() => {
 })
 
 async function iniciarSesion() {
-  if (!form.email.trim() || !form.password.trim()) {
-    error.value = 'Ingresa tu correo y contraseña para continuar.'
-    return
-  }
-
-  cargando.value = true
+  const email = form.email.trim().toLowerCase()
+  const password = form.password
   error.value = ''
-  mensajeRecuperacion.value = ''
-
+  if (!email) { error.value = 'Ingresa tu correo electrónico.'; return }
+  if (!esCorreoValido(email)) { error.value = 'Ingresa un correo electrónico válido.'; return }
+  if (!password || !password.trim()) { error.value = 'Ingresa tu contraseña.'; return }
+  if (password.length < 8 || password.length > 128) { error.value = 'La contraseña debe tener entre 8 y 128 caracteres.'; return }
+  cargando.value = true
   try {
-    await authStore.login({
-      email: form.email,
-      password: form.password,
-    })
-
-    if (recordarCorreo.value) {
-      localStorage.setItem('taller-correo-recordado', form.email.trim())
-    } else {
-      localStorage.removeItem('taller-correo-recordado')
-    }
-
+    await authStore.login({ email, password })
+    if (recordarCorreo.value) localStorage.setItem('taller-correo-recordado', email)
+    else localStorage.removeItem('taller-correo-recordado')
     await router.replace(String(redirectPath.value))
   } catch (err) {
     error.value = err?.message || 'No se pudo iniciar sesión.'
-  } finally {
-    cargando.value = false
-  }
+  } finally { cargando.value = false }
 }
 
 function mostrarAyudaRecuperacion() {
-  mensajeRecuperacion.value = 'Contacta al administrador del taller para restablecer tu contraseña.'
+  router.push({ name: 'recuperar-contrasena' })
 }
 </script>
 
@@ -96,34 +86,46 @@ function mostrarAyudaRecuperacion() {
       <section class="login-content">
         <div class="login-form-area">
           <div class="login-header">
+            <span class="login-chip">Sistema de gestión</span>
             <h1>Inicia sesión</h1>
-            <p>Ingresa para gestionar tu taller.</p>
+            <p>Accede al control operativo de tu taller.</p>
           </div>
 
-          <form class="login-form" @submit.prevent="iniciarSesion">
-            <label class="form-field">
-              <span>Correo electrónico</span>
-              <span class="login-input-wrap">
-                <span class="material-icons" aria-hidden="true">mail_outline</span>
-                <input
-                  v-model="form.email"
-                  type="email"
-                  placeholder="correo@taller.com"
-                  autocomplete="email"
-                  required
-                />
-            </span>
-            </label>
+          <form class="login-form" autocomplete="on" novalidate @submit.prevent="iniciarSesion">
+            <div class="form-field">
+              <label for="login-email">Correo electrónico</label>
+              <input
+                id="login-email"
+                v-model="form.email"
+                class="login-control"
+                name="email"
+                type="email"
+                maxlength="254"
+                dir="ltr"
+                autocomplete="username"
+                autocapitalize="off"
+                spellcheck="false"
+                placeholder="correo@taller.com"
+                required
+              />
+            </div>
 
-            <label class="form-field">
-              <span>Contraseña</span>
-              <span class="login-input-wrap">
-                <span class="material-icons" aria-hidden="true">lock_outline</span>
+            <div class="form-field">
+              <label for="login-password">Contraseña</label>
+              <div class="password-field">
                 <input
+                  id="login-password"
                   v-model="form.password"
+                  class="login-control"
+                  name="password"
                   :type="mostrarContrasena ? 'text' : 'password'"
-                  placeholder="Tu contraseña"
+                  minlength="8"
+                  maxlength="128"
+                  dir="ltr"
                   autocomplete="current-password"
+                  autocapitalize="off"
+                  spellcheck="false"
+                  placeholder="Tu contraseña"
                   required
                 />
                 <button
@@ -134,8 +136,8 @@ function mostrarAyudaRecuperacion() {
                 >
                   <span class="material-icons">{{ mostrarContrasena ? 'visibility_off' : 'visibility' }}</span>
                 </button>
-              </span>
-            </label>
+              </div>
+            </div>
 
             <div class="login-options">
               <label class="remember-option">
