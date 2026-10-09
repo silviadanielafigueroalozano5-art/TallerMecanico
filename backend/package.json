@@ -5,8 +5,8 @@
   "scripts": {
     "dev": "nodemon src/app.js",
     "start": "node src/app.js",
-    "seed:demo": "node src/seedDemo.js",
-    "seed:masivo": "node src/seedMasivo.js",
+    "seed:demo": "node src/scripts/seedDemo.js",
+    "seed:masivo": "node src/scripts/seedMasivo.js",
     "test": "node --test",
     "usuario:crear": "node src/scripts/crearUsuario.js",
     "correo:verificar": "node src/scripts/verificarCorreo.js"

@@ -206,8 +206,6 @@ backend/
 ├─ package.json
 ├─ src/
 │  ├─ app.js
-│  ├─ seedDemo.js
-│  ├─ seedMasivo.js
 │  ├─ config/
 │  │  └─ database.js
 │  ├─ controllers/
@@ -236,6 +234,8 @@ backend/
 │  │  └─ vehiculo.routes.js
 │  ├─ scripts/
 │  │  ├─ crearUsuario.js
+│  │  ├─ seedDemo.js
+│  │  ├─ seedMasivo.js
 │  │  └─ verificarCorreo.js
 │  ├─ security/
 │  │  ├─ passwords.js
@@ -244,13 +244,12 @@ backend/
 │  │  └─ correo.js
 │  ├─ validations/
 │  │  ├─ email.js
-│  │  └─ validations/
-│  │     ├─ clienteValidation.js
-│  │     ├─ idValidation.js
-│  │     ├─ index.js
-│  │     ├─ ordenValidation.js
-│  │     └─ vehiculoValidation.js
-│  └─ tests/
+│  │  ├─ clienteValidation.js
+│  │  ├─ idValidation.js
+│  │  ├─ index.js
+│  │  ├─ ordenValidation.js
+│  │  └─ vehiculoValidation.js
+│  └─ test/
 │     ├─ auth-middleware.test.js
 │     ├─ auth-routes.test.js
 │     ├─ auth-security.test.js
@@ -638,29 +637,20 @@ La configuración se valida en `obtenerConfiguracionCorreo()`.
 
 ---
 
-## 8. Qué se revisó y qué quedó limpio
+## 8. Estructura y convenciones revisadas
 
-Se revisó el proyecto para comprobar si había cosas redundantes o sin uso real.
+Se corrigieron dos inconsistencias de organización del backend:
 
-### Conclusión
+- Las reglas de validación quedaron directamente en `src/validations/`, sin la carpeta anidada redundante `validations/validations`.
+- Los seeds quedaron en `src/scripts/` junto a los demás comandos de mantenimiento; también se actualizaron sus imports y scripts npm.
 
-No encontré módulos muertos obvios ni imports no utilizados en el flujo activo del proyecto. Las piezas que sí existen están integradas a rutas o scripts concretos del sistema:
+El frontend ya está organizado por responsabilidad: `views/` para vistas, `components/` para componentes, `router/` para navegación, `stores/` para Pinia, `services/` para la API y `utils/` para utilidades. Pinia se registra al iniciar Vue y el plugin de persistencia se registra al crear Pinia.
 
-- `seedDemo.js` y `seedMasivo.js` se mantienen porque tienen uso real desde `package.json`
-- `scripts/crearUsuario.js` y `scripts/verificarCorreo.js` también son herramientas del sistema
-- las validaciones y middleware están siendo consumidas por rutas reales
+Quasar se integra mediante `@quasar/vite-plugin`, junto con sus estilos y extras. El proyecto usa Vue con Vite, no Quasar CLI; por ello no necesita carpetas/configuración específicas de Quasar CLI como `src/pages`, `src/layouts` o `quasar.conf.js`. Las versiones de dependencias instaladas coinciden con las declaradas en los manifiestos.
 
-La estructura está ordenada por capas:
+Los archivos `ActualizarEstadoOrden.vue`, `RegistroClienteForm.vue`, `RegistroOrdenForm.vue` y `RegistroVehiculoForm.vue` están en `frontend/src/components/`, pero no se importan en el flujo activo, que actualmente se encuentra en `views/BusquedaPlacaView.vue`. Se conservaron durante esta reorganización para no eliminar código sin confirmar si se reutilizará.
 
-- `controllers`
-- `models`
-- `routes`
-- `middleware`
-- `security`
-- `services`
-- `validations`
-
-Eso mantiene el proyecto fácil de mantener y escalable.
+Las pruebas están en `backend/test/` y se ejecutan con `npm test` desde `backend/`.
 
 ---
 

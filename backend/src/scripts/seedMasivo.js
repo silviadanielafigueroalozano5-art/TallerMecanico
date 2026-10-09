@@ -1,12 +1,12 @@
 const path = require("path");
 const { randomInt } = require("crypto");
 const mongoose = require("mongoose");
-require("dotenv").config({ path: path.resolve(__dirname, "../.env") });
+require("dotenv").config({ path: path.resolve(__dirname, "../../.env") });
 
-const conectarDB = require("./config/database");
-const Cliente = require("./models/Cliente");
-const Vehiculo = require("./models/Vehiculo");
-const OrdenReparacion = require("./models/OrdenReparacion");
+const conectarDB = require("../config/database");
+const Cliente = require("../models/Cliente");
+const Vehiculo = require("../models/Vehiculo");
+const OrdenReparacion = require("../models/OrdenReparacion");
 
 const CANTIDAD = 40;
 

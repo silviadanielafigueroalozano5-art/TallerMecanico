@@ -7,6 +7,37 @@ import { useWorkshopStore, obtenerEstadosDisponibles } from '../stores/workshop'
 import { esCorreoValido } from '../utils/validation'
 
 const estados = ['Recibido', 'En Diagnóstico', 'En Reparación', 'Listo', 'Entregado']
+const opcionesMarca = [
+  'Chevrolet', 'Ford', 'Mazda', 'Renault', 'Toyota', 'Nissan', 'Kia',
+  'Hyundai', 'Volkswagen', 'Suzuki', 'Honda', 'Mitsubishi', 'BMW',
+  'Mercedes-Benz', 'Audi', 'Jeep', 'Subaru', 'Otro',
+]
+const mecanicosDisponibles = [
+  'Mecánico 1',
+  'Mecánico 2',
+  'Mecánico 3',
+  'Mecánico 4',
+  'Mecánico 5',
+]
+const modelosPorMarca = {
+  Chevrolet: ['Aveo', 'Beat', 'Captiva', 'Onix', 'Spark', 'Tracker'],
+  Ford: ['EcoSport', 'Escape', 'Explorer', 'Fiesta', 'Focus', 'Ranger'],
+  Mazda: ['2', '3', '6', 'CX-30', 'CX-5', 'BT-50'],
+  Renault: ['Duster', 'Kangoo', 'Koleos', 'Logan', 'Sandero', 'Stepway'],
+  Toyota: ['4Runner', 'Corolla', 'Fortuner', 'Hilux', 'Prado', 'Yaris'],
+  Nissan: ['Frontier', 'March', 'Pathfinder', 'Qashqai', 'Sentra', 'Versa'],
+  Kia: ['Cerato', 'Picanto', 'Rio', 'Seltos', 'Sportage'],
+  Hyundai: ['Accent', 'Elantra', 'i10', 'Santa Fe', 'Tucson'],
+  Volkswagen: ['Amarok', 'Gol', 'Jetta', 'Polo', 'Tiguan', 'Virtus'],
+  Suzuki: ['Jimny', 'Swift', 'Vitara'],
+  Honda: ['Civic', 'CR-V', 'Fit', 'HR-V'],
+  Mitsubishi: ['ASX', 'L200', 'Montero', 'Outlander'],
+  BMW: ['Serie 1', 'Serie 3', 'Serie 5', 'X1', 'X3', 'X5'],
+  'Mercedes-Benz': ['Clase A', 'Clase C', 'Clase E', 'GLA', 'GLC'],
+  Audi: ['A3', 'A4', 'Q3', 'Q5', 'Q7'],
+  Jeep: ['Cherokee', 'Compass', 'Grand Cherokee', 'Renegade', 'Wrangler'],
+  Subaru: ['Forester', 'Impreza', 'Outback', 'XV'],
+}
 const tiposReparacion = [
   'Cambio de aceite y filtros',
   'Reparación y cambio de llantas',
@@ -58,6 +89,11 @@ const filtroHistorialTexto = ref('')
 const edicionesOrden = reactive({})
 const guardandoOrdenId = ref('')
 const etapaRegistro = ref(1)
+const marcaSeleccionada = ref('')
+const marcaPersonalizada = ref('')
+const modeloSeleccionado = ref('')
+const modeloPersonalizado = ref('')
+const modelosDisponibles = computed(() => modelosPorMarca[marcaSeleccionada.value] || [])
 
 const propietarioForm = reactive({
   nombre: '',
@@ -67,8 +103,6 @@ const propietarioForm = reactive({
 })
 const vehiculoForm = reactive({
   placa: '',
-  marca: '',
-  modelo: '',
   anio: new Date().getFullYear(),
   kilometraje: '',
 })
@@ -78,6 +112,7 @@ const ordenForm = reactive({
   costoRepuestos: 0,
   manoObra: 0,
   mecanico: '',
+  mecanicoPersonalizado: '',
   fechaIngreso: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10),
 })
 
@@ -214,6 +249,10 @@ function iniciarRegistro() {
   propietarioForm.nombre = ''
   propietarioForm.email = ''
   vehiculoForm.kilometraje = ''
+  marcaSeleccionada.value = ''
+  marcaPersonalizada.value = ''
+  modeloSeleccionado.value = ''
+  modeloPersonalizado.value = ''
   if (tipoBusqueda.value === 'placa') {
     vehiculoForm.placa = termino.value.trim().toUpperCase()
     propietarioForm.cedula = ''
@@ -223,6 +262,11 @@ function iniciarRegistro() {
     propietarioForm.telefono = ''
     vehiculoForm.placa = ''
   }
+}
+
+function cambiarMarca() {
+  modeloSeleccionado.value = ''
+  modeloPersonalizado.value = ''
 }
 
 async function buscar() {
@@ -314,17 +358,23 @@ async function registrarPropietario() {
 async function registrarVehiculo() {
   limpiarMensajes()
   const placa = vehiculoForm.placa.trim()
+  const marca = marcaSeleccionada.value === 'Otro'
+    ? marcaPersonalizada.value.trim()
+    : marcaSeleccionada.value
+  const modelo = marcaSeleccionada.value === 'Otro' || modeloSeleccionado.value === 'Otro'
+    ? modeloPersonalizado.value.trim()
+    : modeloSeleccionado.value
   const kilometrajeIngresado = vehiculoForm.kilometraje
   if (kilometrajeIngresado === '' || kilometrajeIngresado === null || kilometrajeIngresado === undefined) { error.value = 'Ingresa el kilometraje actual del vehículo.'; return }
   const kilometraje = Number(kilometrajeIngresado)
   if (!/^[A-Za-z0-9]{5,8}$/.test(placa.replace(/[\s-]/g, ''))) { error.value = 'La placa debe tener entre 5 y 8 letras o números.'; return }
-  if (vehiculoForm.marca.trim().length < 2 || vehiculoForm.marca.trim().length > 80) { error.value = 'La marca debe tener entre 2 y 80 caracteres.'; return }
-  if (!vehiculoForm.modelo.trim() || vehiculoForm.modelo.trim().length > 80) { error.value = 'El modelo debe tener entre 2 y 80 caracteres.'; return }
+  if (marca.length < 2 || marca.length > 80) { error.value = 'La marca debe tener entre 2 y 80 caracteres.'; return }
+  if (!modelo || modelo.length > 80) { error.value = 'El modelo debe tener entre 1 y 80 caracteres.'; return }
   if (!Number.isInteger(Number(vehiculoForm.anio)) || Number(vehiculoForm.anio) < 1900 || Number(vehiculoForm.anio) > new Date().getFullYear() + 1) { error.value = 'El año del vehículo no es válido.'; return }
   if (!Number.isSafeInteger(kilometraje) || kilometraje < 0 || kilometraje > 2000000) { error.value = 'Ingresa el kilometraje actual como un entero entre 0 y 2.000.000.'; return }
   guardando.value = true
   try {
-    const nuevo = await workshop.registrarVehiculo({ ...vehiculoForm, placa: placa.toUpperCase(), marca: vehiculoForm.marca.trim(), modelo: vehiculoForm.modelo.trim(), anio: Number(vehiculoForm.anio), kilometraje })
+    const nuevo = await workshop.registrarVehiculo({ ...vehiculoForm, placa: placa.toUpperCase(), marca, modelo, anio: Number(vehiculoForm.anio), kilometraje })
     pantalla.value = 'ficha'; noEncontrado.value = false; aviso.value = 'Vehículo registrado. Ya puedes crear su primera orden.'
     router.push({ name: 'ficha-vehiculo', params: { placa: nuevo.placa } })
   } catch (err) { error.value = err.message || 'No fue posible registrar el vehículo.' }
@@ -337,6 +387,7 @@ function abrirNuevaOrden() {
   ordenForm.costoRepuestos = 0
   ordenForm.manoObra = 0
   ordenForm.mecanico = ''
+  ordenForm.mecanicoPersonalizado = ''
   const ahora = new Date()
   ordenForm.fechaIngreso = new Date(ahora.getTime() - ahora.getTimezoneOffset() * 60000).toISOString().slice(0, 10)
   pantalla.value = 'orden'
@@ -359,14 +410,18 @@ async function guardarOrden() {
   const repuestos = ordenForm.costoRepuestos === '' ? 0 : Number(ordenForm.costoRepuestos)
   const manoObra = ordenForm.manoObra === '' ? 0 : Number(ordenForm.manoObra)
   if (!Number.isSafeInteger(repuestos) || repuestos < 0 || !Number.isSafeInteger(manoObra) || manoObra < 0 || repuestos + manoObra > 1000000000000) { error.value = 'Los costos de repuestos y mano de obra deben ser enteros no negativos y el total no puede superar 1.000.000.000.000 COP.'; return }
-  if (ordenForm.mecanico.trim() && ordenForm.mecanico.trim().length < 2) { error.value = 'El nombre del mecánico debe tener al menos 2 caracteres.'; return }
+  const mecanicoAsignado = ordenForm.mecanico === 'Otro'
+    ? ordenForm.mecanicoPersonalizado.trim()
+    : ordenForm.mecanico.trim()
+  if (ordenForm.mecanico === 'Otro' && mecanicoAsignado.length < 2) { error.value = 'El nombre del mecánico debe tener al menos 2 caracteres.'; return }
+  if (mecanicoAsignado.length > 100) { error.value = 'El nombre del mecánico no puede superar los 100 caracteres.'; return }
   guardando.value = true
   try {
     await workshop.crearOrdenReparacion({
       descripcionProblema: tipos.map((tipo) => tipo === 'Otro' ? ordenForm.otroTipo.trim() : tipo).join(', '),
       costoRepuestos: repuestos,
       manoObra,
-      mecanico: ordenForm.mecanico.trim(),
+      mecanico: mecanicoAsignado,
     })
     pantalla.value = 'ficha'
     aviso.value = 'La orden se creó en estado Recibido.'
@@ -449,12 +504,17 @@ async function actualizarEstado(orden, evento) {
 }
 
 function obtenerEdicionOrden(orden) {
-  if (!edicionesOrden[orden._id]) edicionesOrden[orden._id] = {
-    diagnostico: orden.diagnostico || '',
-    trabajosRealizados: orden.trabajosRealizados || '',
-    mecanico: orden.mecanico || '',
-    costoRepuestos: orden.costoRepuestos ?? 0,
-    manoObra: orden.manoObra ?? (orden.costoRepuestos == null ? Number(orden.monto) || 0 : 0),
+  if (!edicionesOrden[orden._id]) {
+    const mecanico = orden.mecanico || ''
+    const mecanicoEspecificado = mecanicosDisponibles.includes(mecanico)
+    edicionesOrden[orden._id] = {
+      diagnostico: orden.diagnostico || '',
+      trabajosRealizados: orden.trabajosRealizados || '',
+      mecanico: mecanicoEspecificado ? mecanico : (mecanico ? 'Otro' : ''),
+      mecanicoPersonalizado: mecanicoEspecificado ? '' : mecanico,
+      costoRepuestos: orden.costoRepuestos ?? 0,
+      manoObra: orden.manoObra ?? (orden.costoRepuestos == null ? Number(orden.monto) || 0 : 0),
+    }
   }
   return edicionesOrden[orden._id]
 }
@@ -463,12 +523,14 @@ async function guardarDetallesOrden(orden) {
   const datos = obtenerEdicionOrden(orden)
   const diagnostico = datos.diagnostico.trim()
   const trabajosRealizados = datos.trabajosRealizados.trim()
-  const mecanico = datos.mecanico.trim()
+  const mecanico = datos.mecanico === 'Otro'
+    ? datos.mecanicoPersonalizado.trim()
+    : datos.mecanico.trim()
   const repuestos = Number(datos.costoRepuestos || 0)
   const manoObra = Number(datos.manoObra || 0)
   if ((diagnostico && diagnostico.length < 3) || diagnostico.length > 5000) { error.value = 'El diagnóstico debe tener al menos 3 caracteres o quedar vacío (máximo 5.000).'; return }
   if ((trabajosRealizados && trabajosRealizados.length < 3) || trabajosRealizados.length > 5000) { error.value = 'Los trabajos realizados deben tener al menos 3 caracteres o quedar vacíos (máximo 5.000).'; return }
-  if ((mecanico && mecanico.length < 2) || mecanico.length > 100) { error.value = 'El mecánico debe tener al menos 2 caracteres o quedar vacío (máximo 100).'; return }
+  if ((datos.mecanico === 'Otro' && mecanico.length < 2) || (datos.mecanico !== 'Otro' && mecanico && mecanico.length < 2) || mecanico.length > 100) { error.value = 'El mecánico debe tener al menos 2 caracteres o quedar vacío (máximo 100).'; return }
   if (!Number.isSafeInteger(repuestos) || repuestos < 0 || !Number.isSafeInteger(manoObra) || manoObra < 0 || repuestos + manoObra > 1000000000000) { error.value = 'Los costos deben ser enteros no negativos y el total no puede superar 1.000.000.000.000 COP.'; return }
   error.value = ''
   guardandoOrdenId.value = orden._id
@@ -708,8 +770,29 @@ watch(
             </form>
             <form v-else class="form-grid" @submit.prevent="registrarVehiculo" novalidate>
               <label class="field"><span>Placa <b>*</b></span><input v-model="vehiculoForm.placa" required minlength="5" maxlength="9" autocomplete="off" placeholder="Ej. ABC-123" /></label>
-              <label class="field"><span>Marca <b>*</b></span><input v-model="vehiculoForm.marca" required minlength="2" maxlength="80" placeholder="Ej. Toyota" /></label>
-              <label class="field"><span>Modelo <b>*</b></span><input v-model="vehiculoForm.modelo" required minlength="1" maxlength="80" placeholder="Ej. Corolla" /></label>
+              <label class="field">
+                <span>Marca <b>*</b></span>
+                <select v-model="marcaSeleccionada" required @change="cambiarMarca">
+                  <option disabled value="">Selecciona una marca</option>
+                  <option v-for="marca in opcionesMarca" :key="marca" :value="marca">{{ marca }}</option>
+                </select>
+              </label>
+              <label v-if="marcaSeleccionada === 'Otro'" class="field">
+                <span>Escribe la marca <b>*</b></span>
+                <input v-model="marcaPersonalizada" required minlength="2" maxlength="80" placeholder="Escribe la marca del vehículo" />
+              </label>
+              <label v-else class="field">
+                <span>Modelo <b>*</b></span>
+                <select v-model="modeloSeleccionado" required :disabled="!marcaSeleccionada">
+                  <option disabled value="">Selecciona un modelo</option>
+                  <option v-for="modelo in modelosDisponibles" :key="modelo" :value="modelo">{{ modelo }}</option>
+                  <option value="Otro">Otro</option>
+                </select>
+              </label>
+              <label v-if="marcaSeleccionada === 'Otro' || modeloSeleccionado === 'Otro'" class="field">
+                <span>{{ marcaSeleccionada === 'Otro' ? 'Modelo' : 'Escribe el modelo' }} <b>*</b></span>
+                <input v-model="modeloPersonalizado" required minlength="1" maxlength="80" placeholder="Escribe el modelo del vehículo" />
+              </label>
               <label class="field"><span>Año <b>*</b></span><input v-model.number="vehiculoForm.anio" type="number" min="1900" :max="new Date().getFullYear() + 1" step="1" required /></label>
               <label class="field field-wide"><span>Kilometraje actual <b>*</b></span><input v-model.number="vehiculoForm.kilometraje" type="number" min="0" max="2000000" step="1" inputmode="numeric" required placeholder="Ej. 62500" /></label>
               <div class="form-actions field-wide"><button type="button" class="secondary-button" @click="volverPasoRegistro">{{ propietarioExistente ? 'Volver a búsqueda' : 'Atrás' }}</button><button class="primary-button" :disabled="guardando">{{ guardando ? 'Guardando…' : 'Guardar vehículo' }}<span class="material-icons">check</span></button></div>
@@ -792,7 +875,18 @@ watch(
               <label class="field"><span>Repuestos (COP)</span><div class="money-input"><span>$</span><input v-model.number="ordenForm.costoRepuestos" type="number" min="0" max="1000000000000" step="1" inputmode="numeric" @input="formatoCosto($event, 'costoRepuestos')" placeholder="0" /></div></label>
               <label class="field"><span>Mano de obra (COP)</span><div class="money-input"><span>$</span><input v-model.number="ordenForm.manoObra" type="number" min="0" max="1000000000000" step="1" inputmode="numeric" @input="formatoCosto($event, 'manoObra')" placeholder="0" /></div></label>
               <div class="field"><span>Total estimado</span><strong>{{ formatoDinero((Number(ordenForm.costoRepuestos) || 0) + (Number(ordenForm.manoObra) || 0)) }}</strong></div>
-              <label class="field field-wide"><span>Mecánico asignado (opcional)</span><input v-model="ordenForm.mecanico" minlength="2" maxlength="100" autocomplete="off" placeholder="Nombre del mecánico" /></label>
+              <label class="field field-wide">
+                <span>Mecánico asignado (opcional)</span>
+                <select v-model="ordenForm.mecanico">
+                  <option value="">Sin asignar</option>
+                  <option v-for="mecanico in mecanicosDisponibles" :key="mecanico" :value="mecanico">{{ mecanico }}</option>
+                  <option value="Otro">Otro</option>
+                </select>
+              </label>
+              <label v-if="ordenForm.mecanico === 'Otro'" class="field field-wide">
+                <span>Nombre del mecánico <b>*</b></span>
+                <input v-model="ordenForm.mecanicoPersonalizado" required minlength="2" maxlength="100" autocomplete="off" placeholder="Escribe el nombre del mecánico" />
+              </label>
               <label class="field"><span>Fecha de ingreso <b>*</b></span><div class="money-input"><span class="material-icons">today</span><input :value="ordenForm.fechaIngreso" type="date" readonly disabled /></div></label>
               <div class="field field-wide"><span>Estado inicial</span><strong>Recibido</strong></div>
               <div class="form-actions field-wide"><button type="button" class="secondary-button" @click="pantalla = 'ficha'">Cancelar</button><button class="primary-button" :disabled="guardando">{{ guardando ? 'Creando orden…' : 'Crear orden' }}<span class="material-icons">arrow_forward</span></button></div>
@@ -928,7 +1022,14 @@ watch(
                   <div class="order-edit-fields">
                     <label>Diagnóstico<textarea v-model="obtenerEdicionOrden(orden).diagnostico" maxlength="5000" rows="2" placeholder="Qué se encontró"></textarea></label>
                     <label>Trabajo realizado<textarea v-model="obtenerEdicionOrden(orden).trabajosRealizados" maxlength="5000" rows="2" placeholder="Qué se reparó"></textarea></label>
-                    <label>Mecánico<input v-model="obtenerEdicionOrden(orden).mecanico" maxlength="100" placeholder="Nombre del mecánico"></label>
+                    <label>Mecánico
+                      <select v-model="obtenerEdicionOrden(orden).mecanico">
+                        <option value="">Sin asignar</option>
+                        <option v-for="mecanico in mecanicosDisponibles" :key="mecanico" :value="mecanico">{{ mecanico }}</option>
+                        <option value="Otro">Otro</option>
+                      </select>
+                    </label>
+                    <label v-if="obtenerEdicionOrden(orden).mecanico === 'Otro'">Nombre del mecánico<input v-model="obtenerEdicionOrden(orden).mecanicoPersonalizado" required minlength="2" maxlength="100" placeholder="Escribe el nombre del mecánico"></label>
                     <label>Repuestos (COP)<input v-model.number="obtenerEdicionOrden(orden).costoRepuestos" type="number" min="0" max="1000000000000" step="1"></label>
                     <label>Mano de obra (COP)<input v-model.number="obtenerEdicionOrden(orden).manoObra" type="number" min="0" max="1000000000000" step="1"></label>
                     <strong>Total: {{ formatoDinero((Number(obtenerEdicionOrden(orden).costoRepuestos) || 0) + (Number(obtenerEdicionOrden(orden).manoObra) || 0)) }}</strong>

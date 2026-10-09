@@ -2,8 +2,8 @@ const express = require("express");
 const router = express.Router();
 const c = require("../controllers/vehiculo.controller");
 const { autenticar, soloAdmin } = require("../middleware/autenticar");
-const { validarVehiculo, validarPlacaParam } = require("../validations/validations/vehiculoValidation");
-const { validarId } = require("../validations/validations/idValidation");
+const { validarVehiculo, validarPlacaParam } = require("../validations/vehiculoValidation");
+const { validarId } = require("../validations/idValidation");
 
 router.use(autenticar);
 router.get("/", c.obtenerVehiculos);

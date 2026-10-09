@@ -2,7 +2,7 @@ const Vehiculo = require("../models/Vehiculo");
 const OrdenReparacion = require("../models/OrdenReparacion");
 const Historial = require("../models/Historial");
 const Cliente = require("../models/Cliente");
-const { normalizarPlaca } = require("../validations/validations/vehiculoValidation");
+const { normalizarPlaca } = require("../validations/vehiculoValidation");
 
 function expresionPlaca(placa) {
   const compacta = normalizarPlaca(placa);

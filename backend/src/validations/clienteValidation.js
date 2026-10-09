@@ -1,4 +1,4 @@
-const { esCorreoValido } = require("../email");
+const { esCorreoValido } = require("./email");
 const ALLOWED = new Set(["nombre", "apellido", "cedula", "telefono", "email", "direccion"]);
 const own = (object, key) => Object.prototype.hasOwnProperty.call(object, key);
 function rechazar(res, errores) { return res.status(400).json({ mensaje: "Revisa los datos del cliente.", errores }); }
