@@ -3,10 +3,68 @@ import { computed, reactive, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
-import { useWorkshopStore, obtenerEstadosDisponibles } from '../stores/workshop'
+import { useWorkshopStore, obtenerEstadosDisponibles, obtenerEstadosOrden } from '../stores/workshop'
 import { esCorreoValido } from '../utils/validation'
 
 const estados = ['Recibido', 'En Diagnóstico', 'En Reparación', 'Listo', 'Entregado']
+const valorOtro = '__otro__'
+const marcasVehiculo = [
+  'Audi',
+  'BMW',
+  'BYD',
+  'Chevrolet',
+  'Chery',
+  'Citroën',
+  'Fiat',
+  'Ford',
+  'Honda',
+  'Hyundai',
+  'Jeep',
+  'Kia',
+  'Mazda',
+  'Mercedes-Benz',
+  'Mitsubishi',
+  'Nissan',
+  'Peugeot',
+  'Renault',
+  'Subaru',
+  'Suzuki',
+  'Toyota',
+  'Volkswagen',
+  'Volvo',
+]
+const modelosPorMarca = {
+  Audi: ['A1', 'A3', 'A4', 'A5', 'A6', 'Q2', 'Q3', 'Q5', 'Q7'],
+  BMW: ['Serie 1', 'Serie 2', 'Serie 3', 'Serie 5', 'X1', 'X3', 'X5'],
+  BYD: ['Dolphin', 'Yuan Plus', 'Song Plus', 'Seagull', 'Tang'],
+  Chevrolet: ['Aveo', 'Captiva', 'Cruze', 'Joy', 'Onix', 'Sail', 'Spark', 'Tracker'],
+  Chery: ['Arrizo 5', 'Tiggo 2', 'Tiggo 4', 'Tiggo 7', 'Tiggo 8'],
+  Citroën: ['C3', 'C4', 'C-Elysée', 'Berlingo'],
+  Fiat: ['500', 'Argo', 'Cronos', 'Mobi', 'Pulse', 'Strada'],
+  Ford: ['Bronco', 'Escape', 'EcoSport', 'Fiesta', 'Focus', 'Ranger', 'Territory'],
+  Honda: ['Accord', 'City', 'Civic', 'CR-V', 'Fit', 'HR-V'],
+  Hyundai: ['Accent', 'Elantra', 'Grand i10', 'Kona', 'Santa Fe', 'Tucson'],
+  Jeep: ['Cherokee', 'Compass', 'Grand Cherokee', 'Renegade', 'Wrangler'],
+  Kia: ['Cerato', 'Picanto', 'Rio', 'Seltos', 'Sorento', 'Sportage'],
+  Mazda: ['2', '3', '6', 'CX-3', 'CX-30', 'CX-5', 'CX-9'],
+  'Mercedes-Benz': ['Clase A', 'Clase C', 'Clase E', 'GLA', 'GLB', 'GLC', 'GLE'],
+  Mitsubishi: ['ASX', 'L200', 'Montero', 'Outlander'],
+  Nissan: ['Frontier', 'Kicks', 'March', 'Sentra', 'Versa', 'X-Trail'],
+  Peugeot: ['208', '2008', '3008', '5008', 'Partner'],
+  Renault: ['Captur', 'Duster', 'Kwid', 'Logan', 'Sandero', 'Stepway'],
+  Subaru: ['Forester', 'Impreza', 'Outback', 'XV'],
+  Suzuki: ['Alto', 'Baleno', 'Jimny', 'Swift', 'Vitara'],
+  Toyota: ['Corolla', 'Corolla Cross', 'Fortuner', 'Hilux', 'Prado', 'RAV4', 'Yaris'],
+  Volkswagen: ['Amarok', 'Gol', 'Jetta', 'Nivus', 'Polo', 'Taos', 'T-Cross', 'Tiguan'],
+  Volvo: ['S60', 'XC40', 'XC60', 'XC90'],
+}
+const mecanicosDisponibles = [
+  'Carlos Ramírez',
+  'Andrés Gómez',
+  'Juan Pérez',
+  'Miguel Torres',
+  'David Rodríguez',
+]
 const tiposReparacion = [
   'Cambio de aceite y filtros',
   'Reparación y cambio de llantas',
@@ -56,6 +114,7 @@ const propietarioExistente = ref(false)
 const filtroSeguimiento = ref('')
 const filtroHistorialTexto = ref('')
 const edicionesOrden = reactive({})
+const abonosOrden = reactive({})
 const guardandoOrdenId = ref('')
 const etapaRegistro = ref(1)
 
@@ -72,6 +131,11 @@ const vehiculoForm = reactive({
   anio: new Date().getFullYear(),
   kilometraje: '',
 })
+const marcaSeleccionada = ref('')
+const marcaManual = ref('')
+const modeloSeleccionado = ref('')
+const modeloManual = ref('')
+const modelosDisponibles = computed(() => modelosPorMarca[marcaSeleccionada.value] || [])
 const ordenForm = reactive({
   tiposReparacion: [],
   otroTipo: '',
@@ -79,6 +143,29 @@ const ordenForm = reactive({
   manoObra: 0,
   mecanico: '',
   fechaIngreso: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10),
+})
+const costosTexto = reactive({
+  costoRepuestos: '0',
+  manoObra: '0',
+})
+
+watch(marcaSeleccionada, (marca) => {
+  vehiculoForm.marca = marca === valorOtro ? marcaManual.value : marca
+  vehiculoForm.modelo = ''
+  modeloSeleccionado.value = ''
+  modeloManual.value = ''
+})
+
+watch(marcaManual, (marca) => {
+  if (marcaSeleccionada.value === valorOtro) vehiculoForm.marca = marca
+})
+
+watch(modeloSeleccionado, (modelo) => {
+  vehiculoForm.modelo = modelo === valorOtro ? modeloManual.value : modelo
+})
+
+watch(modeloManual, (modelo) => {
+  if (modeloSeleccionado.value === valorOtro) vehiculoForm.modelo = modelo
 })
 
 function normalizarTexto(valor) {
@@ -196,6 +283,15 @@ function limpiarMensajes() {
   aviso.value = ''
 }
 
+function limpiarMarcaYModelo() {
+  marcaSeleccionada.value = ''
+  marcaManual.value = ''
+  vehiculoForm.marca = ''
+  modeloSeleccionado.value = ''
+  modeloManual.value = ''
+  vehiculoForm.modelo = ''
+}
+
 function abrirBusqueda() {
   pantalla.value = 'buscar'
   workshop.limpiarBusqueda()
@@ -214,6 +310,7 @@ function iniciarRegistro() {
   propietarioForm.nombre = ''
   propietarioForm.email = ''
   vehiculoForm.kilometraje = ''
+  limpiarMarcaYModelo()
   if (tipoBusqueda.value === 'placa') {
     vehiculoForm.placa = termino.value.trim().toUpperCase()
     propietarioForm.cedula = ''
@@ -235,6 +332,7 @@ async function buscar() {
   noEncontrado.value = false
   etapaRegistro.value = 1
   propietarioExistente.value = false
+  limpiarMarcaYModelo()
   workshop.limpiarBusqueda()
   try {
     if (tipoBusqueda.value === 'placa') { abrirFicha(await workshop.buscarPorPlaca(valor)); return }
@@ -336,6 +434,8 @@ function abrirNuevaOrden() {
   ordenForm.otroTipo = ''
   ordenForm.costoRepuestos = 0
   ordenForm.manoObra = 0
+  costosTexto.costoRepuestos = '0'
+  costosTexto.manoObra = '0'
   ordenForm.mecanico = ''
   const ahora = new Date()
   ordenForm.fechaIngreso = new Date(ahora.getTime() - ahora.getTimezoneOffset() * 60000).toISOString().slice(0, 10)
@@ -344,11 +444,23 @@ function abrirNuevaOrden() {
   router.push({ name: 'nueva-orden', params: { placa: vehiculo.value.placa } })
 }
 
-function formatoCosto(event, campo) {
-  const valor = event.target.value
-  if (valor === '') { ordenForm[campo] = ''; return }
-  const numero = Number(valor)
-  ordenForm[campo] = Number.isFinite(numero) ? numero : ''
+function actualizarCosto(event, campo) {
+  const input = event.target
+  const digitosAntesDelCursor = input.value.slice(0, input.selectionStart ?? input.value.length).replace(/\D/g, '').length
+  const digitos = input.value.replace(/\D/g, '').slice(0, 13)
+  const valorFormateado = digitos.replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+
+  ordenForm[campo] = digitos ? Number(digitos) : ''
+  costosTexto[campo] = valorFormateado
+  input.value = valorFormateado
+
+  let cursor = 0
+  let digitosContados = 0
+  while (cursor < valorFormateado.length && digitosContados < digitosAntesDelCursor) {
+    if (/\d/.test(valorFormateado[cursor])) digitosContados += 1
+    cursor += 1
+  }
+  input.setSelectionRange(cursor, cursor)
 }
 
 async function guardarOrden() {
@@ -441,11 +553,23 @@ async function actualizarEstado(orden, evento) {
   if (estado === 'Entregado' && !pagado) { if (control) control.value = orden.estado; return }
   try {
     if (!obtenerEstadosDisponibles(orden.estado).includes(estado)) throw new Error('No puedes saltarte etapas del proceso. Avanza en orden.')
-    await workshop.actualizarEstadoOrden(orden, estado, pagado)
+    await workshop.actualizarEstadoOrden(orden, estado)
   } catch (err) {
     if (control) control.value = orden.estado
     error.value = err.message || 'No fue posible actualizar el estado.'
   }
+}
+
+async function registrarAbonoEnOrden(orden) {
+  const abono = Number(abonosOrden[orden._id])
+  try {
+    limpiarMensajes()
+    const actualizada = await workshop.registrarAbonoOrden(orden, abono)
+    orden.montoPagado = actualizada.montoPagado
+    orden.pagado = actualizada.pagado
+    abonosOrden[orden._id] = ''
+    aviso.value = `Abono registrado. Saldo pendiente: ${formatoDinero(Math.max(0, Number(orden.monto) - Number(orden.montoPagado || 0)))}.`
+  } catch (err) { error.value = err.message || 'No fue posible registrar el abono.' }
 }
 
 function obtenerEdicionOrden(orden) {
@@ -457,6 +581,29 @@ function obtenerEdicionOrden(orden) {
     manoObra: orden.manoObra ?? (orden.costoRepuestos == null ? Number(orden.monto) || 0 : 0),
   }
   return edicionesOrden[orden._id]
+}
+
+function formatearCostoOrden(valor) {
+  if (valor === '' || valor === null || valor === undefined) return ''
+  return new Intl.NumberFormat('es-CO', { maximumFractionDigits: 0 }).format(Number(valor) || 0)
+}
+
+function actualizarCostoOrden(evento, orden, campo) {
+  const input = evento.target
+  const digitosAntesDelCursor = input.value.slice(0, input.selectionStart ?? input.value.length).replace(/\D/g, '').length
+  const digitos = input.value.replace(/\D/g, '').slice(0, 13)
+  const valor = digitos ? Number(digitos) : ''
+  const texto = formatearCostoOrden(valor)
+  obtenerEdicionOrden(orden)[campo] = valor
+  input.value = texto
+
+  let cursor = 0
+  let digitosContados = 0
+  while (cursor < texto.length && digitosContados < digitosAntesDelCursor) {
+    if (/\d/.test(texto[cursor])) digitosContados += 1
+    cursor += 1
+  }
+  input.setSelectionRange(cursor, cursor)
 }
 
 async function guardarDetallesOrden(orden) {
@@ -584,7 +731,7 @@ watch(
       </header>
 
       <main class="page-content">
-        <div v-if="error" class="feedback error-feedback">
+        <div v-if="error && !noEncontrado" class="feedback error-feedback" role="alert">
           <span class="material-icons">error_outline</span>{{ error }}
           <button aria-label="Cerrar mensaje" @click="error = ''"><span class="material-icons">close</span></button>
         </div>
@@ -704,15 +851,47 @@ watch(
               <label class="field"><span>Cédula <b>*</b></span><input v-model="propietarioForm.cedula" required minlength="5" maxlength="20" autocomplete="off" placeholder="Número de identificación" /></label>
               <label class="field"><span>Teléfono <b>*</b></span><input v-model="propietarioForm.telefono" required maxlength="24" type="tel" autocomplete="tel" placeholder="Número de contacto" /></label>
               <label class="field field-wide"><span>Correo electrónico (opcional)</span><input v-model="propietarioForm.email" type="email" maxlength="254" autocomplete="email" placeholder="cliente@ejemplo.com" /></label>
+              <div v-if="error" class="feedback error-feedback field-wide" role="alert">{{ error }}</div>
               <div class="form-actions field-wide"><button class="primary-button" :disabled="guardando">{{ guardando ? 'Guardando…' : 'Continuar' }}<span class="material-icons">arrow_forward</span></button></div>
             </form>
             <form v-else class="form-grid" @submit.prevent="registrarVehiculo" novalidate>
               <label class="field"><span>Placa <b>*</b></span><input v-model="vehiculoForm.placa" required minlength="5" maxlength="9" autocomplete="off" placeholder="Ej. ABC-123" /></label>
-              <label class="field"><span>Marca <b>*</b></span><input v-model="vehiculoForm.marca" required minlength="2" maxlength="80" placeholder="Ej. Toyota" /></label>
-              <label class="field"><span>Modelo <b>*</b></span><input v-model="vehiculoForm.modelo" required minlength="1" maxlength="80" placeholder="Ej. Corolla" /></label>
+              <label class="field">
+                <span>Marca <b>*</b></span>
+                <select v-model="marcaSeleccionada" required>
+                  <option value="" disabled>Selecciona una marca</option>
+                  <option v-for="marca in marcasVehiculo" :key="marca" :value="marca">{{ marca }}</option>
+                  <option :value="valorOtro">Otra marca (escribir)</option>
+                </select>
+                <input
+                  v-if="marcaSeleccionada === valorOtro"
+                  v-model="marcaManual"
+                  required
+                  minlength="2"
+                  maxlength="80"
+                  placeholder="Escribe la marca"
+                />
+              </label>
+              <label class="field">
+                <span>Modelo <b>*</b></span>
+                <select v-model="modeloSeleccionado" required :disabled="!marcaSeleccionada">
+                  <option value="" disabled>Selecciona un modelo</option>
+                  <option v-for="modelo in modelosDisponibles" :key="modelo" :value="modelo">{{ modelo }}</option>
+                  <option :value="valorOtro">Otro modelo (escribir)</option>
+                </select>
+                <input
+                  v-if="modeloSeleccionado === valorOtro"
+                  v-model="modeloManual"
+                  required
+                  minlength="1"
+                  maxlength="80"
+                  placeholder="Escribe el modelo"
+                />
+              </label>
               <label class="field"><span>Año <b>*</b></span><input v-model.number="vehiculoForm.anio" type="number" min="1900" :max="new Date().getFullYear() + 1" step="1" required /></label>
               <label class="field field-wide"><span>Kilometraje actual <b>*</b></span><input v-model.number="vehiculoForm.kilometraje" type="number" min="0" max="2000000" step="1" inputmode="numeric" required placeholder="Ej. 62500" /></label>
-              <div class="form-actions field-wide"><button type="button" class="secondary-button" @click="volverPasoRegistro">{{ propietarioExistente ? 'Volver a búsqueda' : 'Atrás' }}</button><button class="primary-button" :disabled="guardando">{{ guardando ? 'Guardando…' : 'Guardar vehículo' }}<span class="material-icons">check</span></button></div>
+              <div v-if="error" class="feedback error-feedback field-wide" role="alert">{{ error }}</div>
+              <div class="form-actions field-wide"><button type="button" class="secondary-button" @click="volverPasoRegistro">{{ propietarioExistente ? 'Volver a búsqueda' : 'Atrás' }}</button><button class="primary-button" :disabled="guardando" :aria-busy="guardando">{{ guardando ? 'Guardando vehículo…' : 'Guardar vehículo' }}<span class="material-icons">{{ guardando ? 'hourglass_top' : 'check' }}</span></button></div>
             </form>
 </section>
 
@@ -789,10 +968,16 @@ watch(
                 </div>
               </div>
               <label v-if="ordenForm.tiposReparacion.includes('Otro')" class="field field-wide"><span>¿Cuál? <b>*</b></span><input v-model="ordenForm.otroTipo" required maxlength="2000" placeholder="Escribe el tipo de reparación…" /></label>
-              <label class="field"><span>Repuestos (COP)</span><div class="money-input"><span>$</span><input v-model.number="ordenForm.costoRepuestos" type="number" min="0" max="1000000000000" step="1" inputmode="numeric" @input="formatoCosto($event, 'costoRepuestos')" placeholder="0" /></div></label>
-              <label class="field"><span>Mano de obra (COP)</span><div class="money-input"><span>$</span><input v-model.number="ordenForm.manoObra" type="number" min="0" max="1000000000000" step="1" inputmode="numeric" @input="formatoCosto($event, 'manoObra')" placeholder="0" /></div></label>
+              <label class="field"><span>Repuestos (COP)</span><div class="money-input"><span>$</span><input :value="costosTexto.costoRepuestos" type="text" inputmode="numeric" autocomplete="off" @input="actualizarCosto($event, 'costoRepuestos')" placeholder="0" /></div></label>
+              <label class="field"><span>Mano de obra (COP)</span><div class="money-input"><span>$</span><input :value="costosTexto.manoObra" type="text" inputmode="numeric" autocomplete="off" @input="actualizarCosto($event, 'manoObra')" placeholder="0" /></div></label>
               <div class="field"><span>Total estimado</span><strong>{{ formatoDinero((Number(ordenForm.costoRepuestos) || 0) + (Number(ordenForm.manoObra) || 0)) }}</strong></div>
-              <label class="field field-wide"><span>Mecánico asignado (opcional)</span><input v-model="ordenForm.mecanico" minlength="2" maxlength="100" autocomplete="off" placeholder="Nombre del mecánico" /></label>
+              <label class="field field-wide">
+                <span>Mecánico asignado (opcional)</span>
+                <select v-model="ordenForm.mecanico">
+                  <option value="">Sin asignar</option>
+                  <option v-for="mecanico in mecanicosDisponibles" :key="mecanico" :value="mecanico">{{ mecanico }}</option>
+                </select>
+              </label>
               <label class="field"><span>Fecha de ingreso <b>*</b></span><div class="money-input"><span class="material-icons">today</span><input :value="ordenForm.fechaIngreso" type="date" readonly disabled /></div></label>
               <div class="field field-wide"><span>Estado inicial</span><strong>Recibido</strong></div>
               <div class="form-actions field-wide"><button type="button" class="secondary-button" @click="pantalla = 'ficha'">Cancelar</button><button class="primary-button" :disabled="guardando">{{ guardando ? 'Creando orden…' : 'Crear orden' }}<span class="material-icons">arrow_forward</span></button></div>
@@ -921,16 +1106,30 @@ watch(
                 <div class="order-car"><span class="material-icons">directions_car</span><strong>{{ normalizarTexto(orden.vehiculo?.marca) }} {{ normalizarTexto(orden.vehiculo?.modelo) }}</strong></div>
                 <div class="order-plate">{{ orden.vehiculo?.placa }}</div>
                 <div class="order-client"><div class="avatar small-avatar">{{ normalizarTexto(orden.vehiculo?.cliente?.nombre || 'CL').slice(0, 2).toUpperCase() }}</div><span>{{ normalizarTexto(orden.vehiculo?.cliente?.nombre) }} {{ normalizarTexto(orden.vehiculo?.cliente?.apellido) }}</span><span class="order-date">{{ formatoFecha(orden.fechaIngreso) }}</span></div>
-                <div class="order-card-footer"><strong>{{ formatoDinero(orden.monto) }}</strong><select :value="orden.estado" aria-label="Actualizar estado" @change="actualizarEstado(orden, $event)"><option v-for="estado in obtenerEstadosDisponibles(orden.estado)" :key="estado" :value="estado">{{ estado }}</option></select></div>
+                <div class="order-card-footer"><strong>{{ formatoDinero(orden.monto) }}</strong><select :value="orden.estado" aria-label="Actualizar estado" @change="actualizarEstado(orden, $event)"><option v-for="estado in obtenerEstadosOrden(orden)" :key="estado" :value="estado">{{ estado }}</option></select></div>
+                <div class="order-payment">
+                  <small>Pagado: {{ formatoDinero(orden.montoPagado || (orden.pagado ? orden.monto : 0)) }} · Saldo: {{ formatoDinero(Math.max(0, Number(orden.monto) - Number(orden.montoPagado || (orden.pagado ? orden.monto : 0)))) }}</small>
+                  <div v-if="orden.estado !== 'Entregado' && Number(orden.monto) > Number(orden.montoPagado || (orden.pagado ? orden.monto : 0))" class="order-payment-entry">
+                    <input v-model="abonosOrden[orden._id]" type="number" min="1" :max="Number(orden.monto) - Number(orden.montoPagado || 0)" step="1" placeholder="Valor del abono (COP)" aria-label="Valor del abono en pesos" />
+                    <button type="button" class="secondary-button" :disabled="!Number(abonosOrden[orden._id])" @click="registrarAbonoEnOrden(orden)">Registrar abono</button>
+                  </div>
+                  <small v-else-if="orden.pagado" class="payment-complete">Cuenta pagada en su totalidad</small>
+                </div>
 
                 <details class="order-edit">
                   <summary>Diagnóstico, trabajo y costos</summary>
                   <div class="order-edit-fields">
                     <label>Diagnóstico<textarea v-model="obtenerEdicionOrden(orden).diagnostico" maxlength="5000" rows="2" placeholder="Qué se encontró"></textarea></label>
                     <label>Trabajo realizado<textarea v-model="obtenerEdicionOrden(orden).trabajosRealizados" maxlength="5000" rows="2" placeholder="Qué se reparó"></textarea></label>
-                    <label>Mecánico<input v-model="obtenerEdicionOrden(orden).mecanico" maxlength="100" placeholder="Nombre del mecánico"></label>
-                    <label>Repuestos (COP)<input v-model.number="obtenerEdicionOrden(orden).costoRepuestos" type="number" min="0" max="1000000000000" step="1"></label>
-                    <label>Mano de obra (COP)<input v-model.number="obtenerEdicionOrden(orden).manoObra" type="number" min="0" max="1000000000000" step="1"></label>
+                    <label>Mecánico
+                      <select v-model="obtenerEdicionOrden(orden).mecanico">
+                        <option v-if="obtenerEdicionOrden(orden).mecanico && !mecanicosDisponibles.includes(obtenerEdicionOrden(orden).mecanico)" :value="obtenerEdicionOrden(orden).mecanico">{{ obtenerEdicionOrden(orden).mecanico }}</option>
+                        <option value="">Sin asignar</option>
+                        <option v-for="mecanico in mecanicosDisponibles" :key="mecanico" :value="mecanico">{{ mecanico }}</option>
+                      </select>
+                    </label>
+                    <label>Repuestos (COP)<input :value="formatearCostoOrden(obtenerEdicionOrden(orden).costoRepuestos)" type="text" inputmode="numeric" autocomplete="off" placeholder="0" @input="actualizarCostoOrden($event, orden, 'costoRepuestos')"></label>
+                    <label>Mano de obra (COP)<input :value="formatearCostoOrden(obtenerEdicionOrden(orden).manoObra)" type="text" inputmode="numeric" autocomplete="off" placeholder="0" @input="actualizarCostoOrden($event, orden, 'manoObra')"></label>
                     <strong>Total: {{ formatoDinero((Number(obtenerEdicionOrden(orden).costoRepuestos) || 0) + (Number(obtenerEdicionOrden(orden).manoObra) || 0)) }}</strong>
                     <button type="button" class="primary-button" :disabled="guardandoOrdenId === orden._id" @click="guardarDetallesOrden(orden)">{{ guardandoOrdenId === orden._id ? 'Guardando…' : 'Guardar cambios' }}</button>
                   </div>

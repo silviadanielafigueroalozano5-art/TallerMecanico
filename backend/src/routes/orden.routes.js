@@ -11,6 +11,7 @@ router.get("/activas", c.obtenerOrdenesActivas); // antes de /:id
 router.get("/:id", validarId, c.obtenerOrden);
 router.post("/", validarOrden, c.crearOrden);
 router.put("/:id", validarId, validarOrden, c.actualizarOrden);
+router.put("/:id/pago", validarId, c.registrarAbono);
 router.put("/:id/estado", validarId, c.cambiarEstado);
 router.delete("/:id", validarId, c.eliminarOrden);
 

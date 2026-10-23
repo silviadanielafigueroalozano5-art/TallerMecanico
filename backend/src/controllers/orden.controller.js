@@ -17,7 +17,7 @@ async function sincronizarHistorialDesdeOrden(orden, { finalizar = false } = {})
     descripcionProblema: orden.descripcionProblema, diagnostico: orden.diagnostico || "",
     trabajosRealizados: orden.trabajosRealizados || "", mecanico: orden.mecanico || "", estado: orden.estado,
     costoRepuestos: orden.costoRepuestos ?? 0, manoObra: orden.manoObra ?? orden.monto ?? 0,
-    monto: orden.monto || 0, pagado: orden.pagado === true, fechaIngreso: orden.fechaIngreso, fechaEntrega: orden.fechaEntrega || null,
+    monto: orden.monto || 0, montoPagado: orden.montoPagado || (orden.pagado ? orden.monto || 0 : 0), pagado: orden.pagado === true, fechaIngreso: orden.fechaIngreso, fechaEntrega: orden.fechaEntrega || null,
   };
   if (orden.estado === "Entregado" && !finalizar) {
     const existente = await Historial.findOne({ ordenId: orden._id });
@@ -113,20 +113,40 @@ exports.cambiarEstado = async (req, res) => {
     const { estado } = req.body || {};
     if (!ESTADOS.includes(estado)) return res.status(400).json({ mensaje: "El estado solicitado no es válido." });
     if (Object.keys(req.body || {}).some((campo) => !["estado", "pagado"].includes(campo))) return res.status(400).json({ mensaje: "La solicitud contiene campos que no se pueden actualizar." });
-    if (estado === "Entregado" && req.body.pagado !== true) return res.status(400).json({ mensaje: "Confirma el pago de la cuenta antes de entregar el vehículo." });
-    if (estado !== "Entregado" && Object.prototype.hasOwnProperty.call(req.body, "pagado")) return res.status(400).json({ mensaje: "El pago solo se confirma al cerrar la orden." });
+    if (Object.prototype.hasOwnProperty.call(req.body || {}, "pagado")) return res.status(400).json({ mensaje: "Registra el pago completo antes de entregar la orden." });
     const actual = await OrdenReparacion.findById(req.params.id);
     if (!actual) return res.status(404).json({ mensaje: "Orden no encontrada." });
     if (actual.estado === "Entregado") return res.status(409).json({ mensaje: "La orden ya fue entregada y quedó bloqueada." });
+    if (estado === "Entregado" && actual.pagado !== true && Number(actual.montoPagado || 0) < Number(actual.monto || 0)) return res.status(409).json({ mensaje: "No se puede entregar la orden: debe registrarse el pago total primero." });
     if (!puedeAvanzar(actual.estado, estado)) return res.status(409).json({ mensaje: "La orden solo puede avanzar a la siguiente etapa del proceso." });
     const datos = { estado };
-    if (estado === "Entregado") { datos.fechaEntrega = new Date(); datos.pagado = true; }
+    if (estado === "Entregado") datos.fechaEntrega = new Date();
     const orden = await OrdenReparacion.findOneAndUpdate({ _id: actual._id, estado: actual.estado }, datos, { new: true, runValidators: true });
     if (!orden) return res.status(409).json({ mensaje: "La orden cambió mientras se actualizaba. Recarga e intenta de nuevo." });
     await sincronizarHistorialDesdeOrden(orden, { finalizar: estado === "Entregado" });
     res.json(orden);
   } catch (error) {
     res.status(400).json({ mensaje: "No fue posible cambiar el estado.", error: error.message });
+  }
+};
+
+// PUT /api/ordenes/:id/pago - registra que la cuenta quedó pagada en su totalidad
+exports.registrarAbono = async (req, res) => {
+  try {
+    const abono = Number(req.body?.abono);
+    if (!Number.isSafeInteger(abono) || abono <= 0 || Object.keys(req.body || {}).some((campo) => campo !== "abono")) return res.status(400).json({ mensaje: "Ingresa un valor de abono válido en pesos." });
+    const orden = await OrdenReparacion.findById(req.params.id);
+    if (!orden) return res.status(404).json({ mensaje: "Orden no encontrada." });
+    if (orden.estado === "Entregado") return res.status(409).json({ mensaje: "La orden entregada está cerrada." });
+    const saldo = Math.max(0, Number(orden.monto || 0) - Number(orden.montoPagado || (orden.pagado ? orden.monto : 0)));
+    if (abono > saldo) return res.status(400).json({ mensaje: "El abono no puede superar el saldo pendiente de la orden." });
+    orden.montoPagado = Number(orden.montoPagado || (orden.pagado ? orden.monto : 0)) + abono;
+    orden.pagado = orden.montoPagado >= Number(orden.monto || 0);
+    await orden.save();
+    await sincronizarHistorialDesdeOrden(orden);
+    return res.json(orden);
+  } catch (error) {
+    return res.status(400).json({ mensaje: "No fue posible registrar el pago.", error: error.message });
   }
 };
 
@@ -141,7 +161,10 @@ exports.actualizarOrden = async (req, res) => {
     const manoObra = Object.prototype.hasOwnProperty.call(req.body, "manoObra") ? req.body.manoObra : orden.manoObra;
     if (Number(repuestos || 0) + Number(manoObra || 0) > 1000000000000) return res.status(400).json({ mensaje: "El total de la orden no puede superar 1.000.000.000.000 COP." });
     Object.assign(orden, req.body);
+    const pagadoAnteriormente = Number(orden.montoPagado || (orden.pagado ? Number(orden.monto || 0) : 0));
+    orden.montoPagado = pagadoAnteriormente;
     orden.monto = Number(orden.costoRepuestos || 0) + Number(orden.manoObra || 0);
+    orden.pagado = orden.montoPagado >= orden.monto;
     await orden.save();
     await sincronizarHistorialDesdeOrden(orden);
     res.json(orden);

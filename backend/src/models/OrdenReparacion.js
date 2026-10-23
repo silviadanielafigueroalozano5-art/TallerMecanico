@@ -26,6 +26,7 @@ const ordenReparacionSchema = new mongoose.Schema(
     costoRepuestos: { type: Number, min: 0, max: 1000000000000, validate: Number.isSafeInteger },
     manoObra: { type: Number, min: 0, max: 1000000000000, validate: Number.isSafeInteger },
     monto: { type: Number, default: 0, min: 0, max: 1000000000000, validate: Number.isSafeInteger },
+    montoPagado: { type: Number, default: 0, min: 0, max: 1000000000000, validate: Number.isSafeInteger },
     pagado: { type: Boolean, default: false },
     estado: {
       type: String,

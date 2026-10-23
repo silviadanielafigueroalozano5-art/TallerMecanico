@@ -4,6 +4,7 @@ import {
   consultarEstadoPublicoPorPlaca,
   buscarVehiculoPorPlaca,
   cambiarEstadoOrden,
+  registrarAbono,
   actualizarOrden,
   crearCliente,
   crearOrden,
@@ -36,6 +37,12 @@ export function validarTransicionEstado(estadoActual, estadoDestino) {
   if (estadoDestino === estadoActual) return false
 
   return indiceDestino === indiceActual + 1
+}
+
+export function obtenerEstadosOrden(orden) {
+  const estados = obtenerEstadosDisponibles(orden.estado)
+  const pagado = Number(orden.montoPagado || (orden.pagado ? orden.monto : 0)) >= Number(orden.monto || 0)
+  return pagado ? estados : estados.filter((estado) => estado !== 'Entregado')
 }
 
 export const useWorkshopStore = defineStore('workshop', {
@@ -126,14 +133,18 @@ export const useWorkshopStore = defineStore('workshop', {
       return actualizada
     },
 
-    async actualizarEstadoOrden(orden, estado, pagado = false) {
+    async actualizarEstadoOrden(orden, estado) {
       if (!validarTransicionEstado(orden.estado, estado)) {
         throw new Error(
           `Solo puedes avanzar al siguiente paso del proceso: ${obtenerEstadosDisponibles(orden.estado).join(' → ')}`,
         )
       }
 
-      const actualizada = await cambiarEstadoOrden(orden._id, estado, pagado)
+      const montoPagado = Number(orden.montoPagado || (orden.pagado ? orden.monto : 0))
+      if (estado === 'Entregado' && montoPagado < Number(orden.monto || 0)) {
+        throw new Error('No puedes entregar el vehículo mientras tenga saldo pendiente.')
+      }
+      const actualizada = await cambiarEstadoOrden(orden._id, estado)
       this.ordenes = this.ordenes
         .map((item) =>
           item._id === actualizada._id
@@ -141,6 +152,14 @@ export const useWorkshopStore = defineStore('workshop', {
             : item,
         )
         .filter((item) => item.estado !== 'Entregado')
+      return actualizada
+    },
+
+    async registrarAbonoOrden(orden, abono) {
+      const actualizada = await registrarAbono(orden._id, Number(abono))
+      this.ordenes = this.ordenes.map((item) => item._id === actualizada._id ? { ...item, montoPagado: actualizada.montoPagado, pagado: actualizada.pagado } : item)
+      this.historialGeneral = this.historialGeneral.map((item) => item._id === actualizada._id ? { ...item, montoPagado: actualizada.montoPagado, pagado: actualizada.pagado } : item)
+      this.historial = this.historial.map((item) => item._id === actualizada._id ? { ...item, montoPagado: actualizada.montoPagado, pagado: actualizada.pagado } : item)
       return actualizada
     },
 

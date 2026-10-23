@@ -1376,13 +1376,19 @@ textarea::placeholder {
   box-shadow: 0 0 0 3px #4359dc10;
 }
 .money-input > span {
+  flex: 0 0 auto;
   padding-left: 11px;
   color: #87919c;
   font-size: 10px;
 }
 .money-input input {
+  width: 0;
+  min-width: 0;
   height: 35px;
+  flex: 1 1 auto;
+  padding: 0 10px;
   border: 0;
+  background: transparent;
   box-shadow: none !important;
 }
 .tracker-toolbar {
@@ -1668,6 +1674,31 @@ textarea::placeholder {
   color: #4d5d7a;
   font-size: 13px;
 }
+.order-payment {
+  display: grid;
+  gap: 7px;
+  margin-top: 9px;
+  color: #65718a;
+  font-size: 11px;
+}
+.order-payment-entry {
+  display: flex;
+  gap: 6px;
+}
+.order-payment-entry input {
+  min-width: 0;
+  width: 100%;
+  padding: 7px 9px;
+  border: 1px solid rgba(101, 92, 184, 0.2);
+  border-radius: 6px;
+  font-size: 12px;
+}
+.order-payment-entry .secondary-button {
+  padding: 6px 9px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.payment-complete { color: #21815b; font-weight: 600; }
 .column-empty {
   padding: 18px 5px;
   color: #a0a9b2;

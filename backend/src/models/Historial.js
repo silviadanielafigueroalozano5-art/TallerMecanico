@@ -33,6 +33,7 @@ const historialSchema = new mongoose.Schema(
     costoRepuestos: { type: Number, default: 0, min: 0 },
     manoObra: { type: Number, default: 0, min: 0 },
     monto: { type: Number, default: 0, min: 0 },
+    montoPagado: { type: Number, default: 0, min: 0 },
     pagado: { type: Boolean, default: false },
     fechaIngreso: { type: Date, default: Date.now },
     fechaEntrega: { type: Date, default: null },

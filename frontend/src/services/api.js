@@ -103,9 +103,13 @@ export function actualizarOrden(id, datos) {
   return request(apiClient.put('/ordenes/' + id, datos), 'No fue posible guardar los detalles de la orden')
 }
 
-export function cambiarEstadoOrden(id, estado, pagado = false) {
+export function registrarAbono(id, abono) {
+  return request(apiClient.put(`/ordenes/${id}/pago`, { abono }), 'No fue posible registrar el abono')
+}
+
+export function cambiarEstadoOrden(id, estado) {
   return request(
-    apiClient.put(`/ordenes/${id}/estado`, { estado, ...(pagado ? { pagado: true } : {}) }),
+    apiClient.put(`/ordenes/${id}/estado`, { estado }),
     'No fue posible actualizar el estado de la orden',
   )
 }
