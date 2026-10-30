@@ -22,10 +22,10 @@ async function sincronizarHistorialDesdeOrden(orden, { finalizar = false } = {})
   if (orden.estado === "Entregado" && !finalizar) {
     const existente = await Historial.findOne({ ordenId: orden._id });
     if (existente?.estado === "Entregado") return existente;
-    if (existente) return Historial.findOneAndUpdate({ ordenId: orden._id }, valores, { new: true, runValidators: true });
-    return Historial.findOneAndUpdate({ ordenId: orden._id }, { $setOnInsert: valores }, { upsert: true, new: true, setDefaultsOnInsert: true });
+    if (existente) return Historial.findOneAndUpdate({ ordenId: orden._id }, valores, { returnDocument: "after", runValidators: true });
+    return Historial.findOneAndUpdate({ ordenId: orden._id }, { $setOnInsert: valores }, { upsert: true, returnDocument: "after", setDefaultsOnInsert: true });
   }
-  return Historial.findOneAndUpdate({ ordenId: orden._id }, valores, { upsert: true, new: true, runValidators: true, setDefaultsOnInsert: true });
+  return Historial.findOneAndUpdate({ ordenId: orden._id }, valores, { upsert: true, returnDocument: "after", runValidators: true, setDefaultsOnInsert: true });
 }
 
 exports.sincronizarHistorialBase = async () => {
@@ -121,7 +121,7 @@ exports.cambiarEstado = async (req, res) => {
     if (!puedeAvanzar(actual.estado, estado)) return res.status(409).json({ mensaje: "La orden solo puede avanzar a la siguiente etapa del proceso." });
     const datos = { estado };
     if (estado === "Entregado") datos.fechaEntrega = new Date();
-    const orden = await OrdenReparacion.findOneAndUpdate({ _id: actual._id, estado: actual.estado }, datos, { new: true, runValidators: true });
+    const orden = await OrdenReparacion.findOneAndUpdate({ _id: actual._id, estado: actual.estado }, datos, { returnDocument: "after", runValidators: true });
     if (!orden) return res.status(409).json({ mensaje: "La orden cambió mientras se actualizaba. Recarga e intenta de nuevo." });
     await sincronizarHistorialDesdeOrden(orden, { finalizar: estado === "Entregado" });
     res.json(orden);

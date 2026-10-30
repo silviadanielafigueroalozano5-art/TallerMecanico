@@ -2,10 +2,10 @@ const Cliente = require("../models/Cliente");
 const Vehiculo = require("../models/Vehiculo");
 const OrdenReparacion = require("../models/OrdenReparacion");
 
-// GET /api/clientes - listar todos
+// GET /api/clientes - listar todos para el panel de gestión
 exports.obtenerClientes = async (req, res) => {
   try {
-    const clientes = await Cliente.find().sort({ createdAt: -1 });
+    const clientes = await Cliente.find().sort({ createdAt: -1 }).lean();
     res.json(clientes);
   } catch (error) {
     res
@@ -21,7 +21,8 @@ exports.obtenerCliente = async (req, res) => {
     if (!cliente) {
       return res.status(404).json({ mensaje: "Cliente no encontrado" });
     }
-    res.json(cliente);
+    const vehiculos = await Vehiculo.find({ cliente: cliente._id }).sort({ createdAt: -1 });
+    res.json({ cliente, vehiculos });
   } catch (error) {
     res
       .status(500)
@@ -114,7 +115,7 @@ exports.crearCliente = async (req, res) => {
 // PUT /api/clientes/:id - actualizar datos validados
 exports.actualizarCliente = async (req, res) => {
   try {
-    const cliente = await Cliente.findByIdAndUpdate(req.params.id, { $set: req.body }, { new: true, runValidators: true });
+    const cliente = await Cliente.findByIdAndUpdate(req.params.id, { $set: req.body }, { returnDocument: "after", runValidators: true });
     if (!cliente) return res.status(404).json({ mensaje: "Cliente no encontrado." });
     res.json(cliente);
   } catch (error) {
@@ -129,7 +130,7 @@ exports.eliminarCliente = async (req, res) => {
     const cliente = await Cliente.findById(req.params.id);
     if (!cliente) return res.status(404).json({ mensaje: "Cliente no encontrado." });
     const tieneVehiculos = await Vehiculo.exists({ cliente: cliente._id });
-    if (tieneVehiculos) return res.status(409).json({ mensaje: "No se puede eliminar un cliente que todavía tiene vehículos registrados. Reasigna o elimina primero los vehículos sin historial." });
+    if (tieneVehiculos) return res.status(409).json({ mensaje: "No se puede eliminar un cliente que todavía tiene vehículos registrados. Desactívalo o elimina primero los vehículos sin historial." });
     await cliente.deleteOne();
     res.json({ mensaje: "Cliente eliminado." });
   } catch (error) {

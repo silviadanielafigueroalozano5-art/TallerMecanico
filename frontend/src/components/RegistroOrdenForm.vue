@@ -27,25 +27,48 @@ async function guardarOrden() {
   error.value = ''
   const repuestos = Number(orden.costoRepuestos || 0)
   const manoObra = Number(orden.manoObra || 0)
-  if (!orden.descripcionProblema.trim() || orden.descripcionProblema.trim().length < 5) { error.value = 'Describe el problema con al menos 5 caracteres.'; return }
-  if (!Number.isSafeInteger(repuestos) || repuestos < 0 || !Number.isSafeInteger(manoObra) || manoObra < 0 || repuestos + manoObra > 1000000000000) { error.value = 'Los costos deben ser enteros no negativos y el total no puede superar 1.000.000.000.000 COP.'; return }
+  if (!orden.descripcionProblema.trim() || orden.descripcionProblema.trim().length < 5) {
+    error.value = 'Describe el problema con al menos 5 caracteres.'
+    return
+  }
+  if (
+    !Number.isSafeInteger(repuestos) ||
+    repuestos < 0 ||
+    !Number.isSafeInteger(manoObra) ||
+    manoObra < 0 ||
+    repuestos + manoObra > 1000000000000
+  ) {
+    error.value = 'Los costos deben ser enteros no negativos y el total no puede superar 1.000.000.000.000 COP.'
+    return
+  }
   guardando.value = true
   try {
-    const nuevaOrden = await crearOrden({ descripcionProblema: orden.descripcionProblema.trim(), diagnostico: orden.diagnostico.trim(), trabajosRealizados: orden.trabajosRealizados.trim(), costoRepuestos: repuestos, manoObra, mecanico: orden.mecanico.trim(), vehiculo: props.vehiculo._id })
+    const nuevaOrden = await crearOrden({
+      descripcionProblema: orden.descripcionProblema.trim(),
+      diagnostico: orden.diagnostico.trim(),
+      trabajosRealizados: orden.trabajosRealizados.trim(),
+      costoRepuestos: repuestos,
+      manoObra,
+      mecanico: orden.mecanico.trim(),
+      vehiculo: props.vehiculo._id,
+    })
     emit('orden-creada', nuevaOrden)
-  } catch (err) { error.value = err.message }
-  finally { guardando.value = false }
+  } catch (err) {
+    error.value = err.message
+  } finally {
+    guardando.value = false
+  }
 }
 </script>
 
 <template>
   <q-card flat bordered>
     <q-card-section>
-      <div class="text-h6">Nueva orden de reparación</div>
-      <div class="text-caption text-grey-7">
-        Vehículo: {{ vehiculo.placa }} — {{ vehiculo.marca }}
-        {{ vehiculo.modelo }}
-      </div>
+      <q-item-label class="text-h6">Nueva orden de reparación</q-item-label>
+      <q-item-label caption class="text-grey-7">
+        Vehículo: {{ props.vehiculo.placa }} — {{ props.vehiculo.marca }}
+        {{ props.vehiculo.modelo }}
+      </q-item-label>
     </q-card-section>
 
     <q-separator />
@@ -82,14 +105,14 @@ async function guardarOrden() {
           {{ error }}
         </q-banner>
 
-        <div class="row justify-end">
+        <q-card-actions align="right" class="q-pa-none">
           <q-btn
             type="submit"
             color="primary"
             label="Crear orden"
             :loading="guardando"
           />
-        </div>
+        </q-card-actions>
       </q-form>
     </q-card-section>
   </q-card>

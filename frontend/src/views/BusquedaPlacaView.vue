@@ -5,6 +5,11 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useWorkshopStore, obtenerEstadosDisponibles, obtenerEstadosOrden } from '../stores/workshop'
 import { esCorreoValido } from '../utils/validation'
+import { normalizarTexto } from '../utils/texto'
+import ModalDialogo from '../components/ModalDialogo.vue'
+import GestorClientesModal from '../components/GestorClientesModal.vue'
+import EditorClienteVehiculo from '../components/EditorClienteVehiculo.vue'
+import { useGestionClientes } from '../utils/useGestionClientes'
 
 const estados = ['Recibido', 'En Diagnóstico', 'En Reparación', 'Listo', 'Entregado']
 const valorOtro = '__otro__'
@@ -97,6 +102,8 @@ const {
   historial,
   ordenes,
   historialGeneral,
+  clientes,
+  vehiculos,
 } = storeToRefs(workshop)
 const termino = ref('')
 const cargando = ref(false)
@@ -168,25 +175,6 @@ watch(modeloManual, (modelo) => {
   if (modeloSeleccionado.value === valorOtro) vehiculoForm.modelo = modelo
 })
 
-function normalizarTexto(valor) {
-  if (valor === null || valor === undefined) return ''
-
-  const mapa = {
-    'Ã¡': 'á', 'Ã©': 'é', 'Ã­': 'í', 'Ã³': 'ó', 'Ãº': 'ú', 'Ã±': 'ñ', 'Ã¼': 'ü',
-    'Ã': 'Á', 'Ã': 'É', 'Ã': 'Í', 'Ã': 'Ó', 'Ã': 'Ú', 'Ã‘': 'Ñ', 'Ãœ': 'Ü',
-    'Ã': 'A', 'Â': 'A',
-    '?r': 'ér', '?s': 'és', '?n': 'én', '?l': 'él', '?m': 'ém', '?t': 'ét', '?d': 'éd',
-    '?b': 'éb', '?p': 'ép', '?c': 'éc', '?v': 'év', '?g': 'ég', '?j': 'éj', '?z': 'ez',
-  }
-
-  let texto = String(valor)
-  Object.entries(mapa).forEach(([entrada, salida]) => {
-    texto = texto.split(entrada).join(salida)
-  })
-
-  return texto
-}
-
 const nombrePropietario = computed(() => {
   const propietario = vehiculo.value?.cliente || clienteEncontrado.value
   if (!propietario) return 'Propietario'
@@ -236,15 +224,76 @@ const ordenesEntregadas = computed(() =>
     .sort((a, b) => new Date(b.fechaEntrega || b.fechaIngreso) - new Date(a.fechaEntrega || a.fechaIngreso)),
 )
 
-const resumenOrdenes = computed(() => ({
-  enProceso: ordenes.value.filter((orden) =>
+const estadoResumenSeleccionado = ref('')
+const cargandoResumen = ref(false)
+
+const metadatosEstadoResumen = {
+  recibidos: {
+    titulo: 'Vehículos recibidos',
+    descripcion: 'Vehículos que acaban de ingresar al taller y esperan evaluación inicial.',
+    mensajeVacio: 'No hay vehículos en estado Recibido en este momento.',
+  },
+  diagnostico: {
+    titulo: 'Vehículos en diagnóstico',
+    descripcion: 'Vehículos que están siendo evaluados para identificar sus fallas.',
+    mensajeVacio: 'No hay vehículos en diagnóstico actualmente.',
+  },
+  reparacion: {
+    titulo: 'Vehículos en reparación',
+    descripcion: 'Vehículos con trabajos de reparación actualmente en ejecución.',
+    mensajeVacio: 'No hay vehículos en reparación en este momento.',
+  },
+  proceso: {
+    titulo: 'Vehículos en proceso',
+    descripcion: 'Vehículos con trabajos pendientes o actividades en curso dentro del taller.',
+    mensajeVacio: 'No hay vehículos con órdenes en proceso actualmente.',
+  },
+  listos: {
+    titulo: 'Vehículos listos',
+    descripcion: 'Vehículos cuya reparación ha terminado y están listos para su entrega.',
+    mensajeVacio: 'No hay vehículos listos para entrega en este momento.',
+  },
+}
+
+const ordenesActivasUnicas = computed(() => {
+  const vistos = new Set()
+  return (ordenes.value || []).filter((orden) => {
+    if (!orden || !orden._id || !orden.vehiculo || orden.estado === 'Entregado') return false
+    const id = String(orden._id)
+    if (vistos.has(id)) return false
+    vistos.add(id)
+    return true
+  })
+})
+
+const ordenesPorEstadoResumen = computed(() => ({
+  recibidos: ordenesActivasUnicas.value.filter((orden) => orden.estado === 'Recibido'),
+  diagnostico: ordenesActivasUnicas.value.filter((orden) => orden.estado === 'En Diagnóstico'),
+  reparacion: ordenesActivasUnicas.value.filter((orden) => orden.estado === 'En Reparación'),
+  proceso: ordenesActivasUnicas.value.filter((orden) =>
     ['Recibido', 'En Diagnóstico', 'En Reparación'].includes(orden.estado),
-  ).length,
-  listos: ordenes.value.filter((orden) => orden.estado === 'Listo').length,
-  diagnostico: ordenes.value.filter((orden) => orden.estado === 'En Diagnóstico').length,
-  recibidos: ordenes.value.filter((orden) => orden.estado === 'Recibido').length,
-  reparacion: ordenes.value.filter((orden) => orden.estado === 'En Reparación').length,
+  ),
+  listos: ordenesActivasUnicas.value.filter((orden) => orden.estado === 'Listo'),
 }))
+
+const resumenOrdenes = computed(() => ({
+  enProceso: ordenesPorEstadoResumen.value.proceso.length,
+  listos: ordenesPorEstadoResumen.value.listos.length,
+  diagnostico: ordenesPorEstadoResumen.value.diagnostico.length,
+  recibidos: ordenesPorEstadoResumen.value.recibidos.length,
+  reparacion: ordenesPorEstadoResumen.value.reparacion.length,
+}))
+
+const infoEstadoSeleccionado = computed(
+  () => metadatosEstadoResumen[estadoResumenSeleccionado.value] || null,
+)
+
+const ordenesEstadoSeleccionado = computed(() => {
+  const lista = ordenesPorEstadoResumen.value[estadoResumenSeleccionado.value] || []
+  return [...lista].sort(
+    (a, b) => new Date(b.fechaIngreso || b.createdAt) - new Date(a.fechaIngreso || a.createdAt),
+  )
+})
 
 const historialEntregados = computed(() =>
   (historial.value || []).filter((orden) => orden.estado === 'Entregado'),
@@ -293,6 +342,7 @@ function limpiarMarcaYModelo() {
 }
 
 function abrirBusqueda() {
+  cerrarGestion()
   pantalla.value = 'buscar'
   workshop.limpiarBusqueda()
   noEncontrado.value = false
@@ -488,6 +538,7 @@ async function guardarOrden() {
 }
 
 async function abrirHistorial() {
+  cerrarGestion()
   pantalla.value = 'historial'
   limpiarMensajes()
   if (route.name !== 'historial') {
@@ -499,6 +550,7 @@ async function abrirHistorial() {
 }
 
 async function abrirEntregados() {
+  cerrarGestion()
   pantalla.value = 'entregados'
   limpiarMensajes()
   if (route.name !== 'historial' || route.query.estado !== 'entregado') {
@@ -509,6 +561,7 @@ async function abrirEntregados() {
 }
 
 async function cargarSeguimiento() {
+  cerrarGestion()
   pantalla.value = 'seguimiento'
   if (route.name !== 'seguimiento') {
     await router.push({ name: 'seguimiento' })
@@ -530,11 +583,27 @@ async function cargarOrdenes() {
 }
 
 async function cargarResumenOrdenes() {
+  cargandoResumen.value = true
   try {
     await workshop.cargarOrdenesActivas()
   } catch (err) {
     error.value = err.message || 'No fue posible cargar el estado de las órdenes.'
+  } finally {
+    cargandoResumen.value = false
   }
+}
+
+async function seleccionarEstadoResumen(clave) {
+  if (estadoResumenSeleccionado.value === clave) {
+    estadoResumenSeleccionado.value = ''
+    return
+  }
+  estadoResumenSeleccionado.value = clave
+  await cargarResumenOrdenes()
+}
+
+function cerrarEstadoResumen() {
+  estadoResumenSeleccionado.value = ''
 }
 
 async function cargarHistorialGeneral() {
@@ -549,8 +618,18 @@ async function actualizarEstado(orden, evento) {
   const control = evento?.target
   const estado = typeof evento === 'string' ? evento : control?.value
   limpiarMensajes()
-  const pagado = estado === 'Entregado' ? window.confirm('Confirma que el cliente pagó la cuenta completa y retiró el vehículo.') : false
-  if (estado === 'Entregado' && !pagado) { if (control) control.value = orden.estado; return }
+  if (estado === 'Entregado') {
+    if (control) control.value = orden.estado
+    abrirConfirmacion({
+      titulo: 'Confirmar entrega',
+      mensaje: 'Confirma que el cliente pagó la cuenta completa y retiró el vehículo.',
+      nota: 'La orden pasará al estado Entregado y dejará de aparecer en el tablero de reparaciones activas.',
+      textoConfirmar: 'Sí, entregar',
+      peligro: false,
+      accion: () => workshop.actualizarEstadoOrden(orden, estado).then(() => { aviso.value = 'Orden entregada correctamente.' }),
+    })
+    return
+  }
   try {
     if (!obtenerEstadosDisponibles(orden.estado).includes(estado)) throw new Error('No puedes saltarte etapas del proceso. Avanza en orden.')
     await workshop.actualizarEstadoOrden(orden, estado)
@@ -626,6 +705,88 @@ async function guardarDetallesOrden(orden) {
   finally { guardandoOrdenId.value = '' }
 }
 
+/* ------------------------------------------------------------------
+ * Diálogos propios (sin alert / confirm del navegador)
+ * ------------------------------------------------------------------ */
+const dialogo = reactive({
+  abierto: false,
+  titulo: '',
+  mensaje: '',
+  nota: '',
+  textoConfirmar: 'Aceptar',
+  textoCancelar: 'Cancelar',
+  peligro: false,
+  ocupado: false,
+  accion: null,
+})
+
+function abrirDialogo(opciones) {
+  Object.assign(dialogo, {
+    abierto: true,
+    titulo: opciones.titulo || 'Confirmar acción',
+    mensaje: opciones.mensaje || '',
+    nota: opciones.nota || '',
+    textoConfirmar: opciones.textoConfirmar || 'Aceptar',
+    textoCancelar: opciones.textoCancelar || 'Cancelar',
+    peligro: Boolean(opciones.peligro),
+    ocupado: false,
+    accion: opciones.accion || null,
+  })
+}
+
+function abrirConfirmacion(opciones) {
+  abrirDialogo({
+    ...opciones,
+    ocupado: true,
+    accion: async () => {
+      try {
+        await opciones.accion()
+      } catch (err) {
+        error.value = err.message || 'No fue posible completar la acción.'
+      } finally {
+        dialogo.abierto = false
+      }
+    },
+  })
+}
+
+async function ejecutarDialogo() {
+  if (!dialogo.accion || dialogo.ocupado) return
+  dialogo.ocupado = true
+  try {
+    await dialogo.accion()
+    dialogo.abierto = false
+  } finally {
+    dialogo.ocupado = false
+  }
+}
+
+/* ------------------------------------------------------------------
+ * Clientes registrados + edición de propietario y vehículo
+ * La lógica vive en utils/useGestionClientes.js
+ * ------------------------------------------------------------------ */
+const {
+  modoGestion,
+  gestionAbierta,
+  cargandoGestion,
+  filtroGestion,
+  errorGestion,
+  editorAbierto,
+  guardandoEditor,
+  errorEditor,
+  editorForm,
+  clientesFiltrados,
+  vehiculosFiltrados,
+  abrirGestionClientes,
+  cargarGestion,
+  cerrarGestion,
+  abrirEditor,
+  cerrarEditor,
+  guardarEditor,
+  borrarClienteGestion,
+  borrarVehiculoGestion,
+} = useGestionClientes({ aviso, abrirConfirmacion })
+
 function formatoFecha(fecha) {
   if (!fecha) return '—'
   return new Date(fecha).toLocaleDateString('es-CO', {
@@ -684,51 +845,82 @@ watch(
 
 <template>
   <div class="app-shell">
+    <!-- Sidebar fijo y persistente a la izquierda -->
+    <aside
+      id="sidebar-drawer"
+      class="sidebar-drawer"
+      aria-label="Menú de navegación"
+    >
+      <div class="drawer-header">
+        <a class="brand" href="#" @click.prevent="abrirBusqueda">
+          <span class="brand-mark"><span class="material-icons">build</span></span>
+          <span class="brand-copy"><strong>Torque</strong><small>TALLER MECÁNICO</small></span>
+        </a>
+      </div>
+
+      <div class="drawer-section-label">NAVEGACIÓN PRINCIPAL</div>
+
+      <nav class="drawer-nav" aria-label="Navegación principal">
+        <button
+          class="drawer-link"
+          type="button"
+          :class="{ active: !gestionAbierta && (pantalla === 'buscar' || pantalla === 'ficha' || pantalla === 'orden') }"
+          @click="abrirBusqueda"
+        >
+          <span class="drawer-link-icon"><span class="material-icons">search</span></span>
+          <span class="drawer-link-text">Buscar vehículo</span>
+        </button>
+
+        <button
+          class="drawer-link"
+          type="button"
+          :class="{ active: gestionAbierta }"
+          @click="abrirGestionClientes"
+        >
+          <span class="drawer-link-icon"><span class="material-icons">groups</span></span>
+          <span class="drawer-link-text">Clientes registrados</span>
+        </button>
+
+        <button
+          class="drawer-link"
+          type="button"
+          :class="{ active: !gestionAbierta && pantalla === 'seguimiento' }"
+          @click="cargarSeguimiento"
+        >
+          <span class="drawer-link-icon"><span class="material-icons">view_kanban</span></span>
+          <span class="drawer-link-text">Seguimiento</span>
+        </button>
+
+        <button
+          class="drawer-link"
+          type="button"
+          :class="{ active: !gestionAbierta && pantalla === 'historial' }"
+          @click="abrirHistorial"
+        >
+          <span class="drawer-link-icon"><span class="material-icons">history</span></span>
+          <span class="drawer-link-text">Historial</span>
+        </button>
+
+        <button
+          class="drawer-link"
+          type="button"
+          :class="{ active: !gestionAbierta && pantalla === 'entregados' }"
+          @click="abrirEntregados"
+        >
+          <span class="drawer-link-icon"><span class="material-icons">task_alt</span></span>
+          <span class="drawer-link-text">Entregados</span>
+        </button>
+      </nav>
+
+      <div class="drawer-footer">
+        <button class="drawer-link drawer-logout" type="button" @click="cerrarSesion">
+          <span class="drawer-link-icon"><span class="material-icons">logout</span></span>
+          <span class="drawer-link-text">Cerrar sesión</span>
+        </button>
+      </div>
+    </aside>
+
     <div class="main-column">
-      <header class="topbar">
-        <div class="topbar-left">
-          <a class="brand" href="#" @click.prevent="abrirBusqueda">
-            <span class="brand-mark"><span class="material-icons">build</span></span>
-            <span class="brand-copy"><strong>Torque</strong><small>TALLER MECÁNICO</small></span>
-          </a>
-          <nav class="topbar-nav" aria-label="Navegación principal">
-            <button
-              class="nav-link"
-              :class="{ active: pantalla === 'buscar' || pantalla === 'ficha' || pantalla === 'orden' }"
-              @click="abrirBusqueda"
-            >
-              <span class="material-icons">search</span><span>Buscar vehículo</span>
-            </button>
-            <button
-              class="nav-link"
-              :class="{ active: pantalla === 'seguimiento' }"
-              @click="cargarSeguimiento"
-            >
-              <span class="material-icons">view_kanban</span><span>Seguimiento</span>
-            </button>
-            <button
-              class="nav-link"
-              :class="{ active: pantalla === 'historial' }"
-              @click="abrirHistorial"
-            >
-              <span class="material-icons">history</span><span>Historial</span>
-            </button>
-            <button
-              class="nav-link"
-              :class="{ active: pantalla === 'entregados' }"
-              @click="abrirEntregados"
-            >
-              <span class="material-icons">task_alt</span><span>Entregados</span>
-            </button>
-          </nav>
-        </div>
-        <div class="topbar-actions">
-          <span class="today"><span class="material-icons">calendar_today</span>{{ new Date().toLocaleDateString('es-CO', { weekday: 'short', day: 'numeric', month: 'short' }) }}</span>
-          <button class="nav-link logout-button" type="button" @click="cerrarSesion">
-            <span class="material-icons">logout</span><span>Cerrar sesión</span>
-          </button>
-        </div>
-      </header>
 
       <main class="page-content">
         <div v-if="error && !noEncontrado" class="feedback error-feedback" role="alert">
@@ -740,16 +932,41 @@ watch(
           <button aria-label="Cerrar mensaje" @click="aviso = ''"><span class="material-icons">close</span></button>
         </div>
 
-        <template v-if="pantalla === 'buscar'">
+        <template v-if="gestionAbierta">
           <section class="page-heading">
             <div>
-              <div class="eyebrow">GESTIÓN DEL TALLER</div>
+              <h1>Clientes registrados</h1>
+              <p>Consulta los propietarios, su contacto y los vehículos vinculados.</p>
+            </div>
+          </section>
+
+          <GestorClientesModal
+            v-model:filtro="filtroGestion"
+            :modo-gestion="modoGestion"
+            :clientes="clientes"
+            :vehiculos="vehiculos"
+            :clientes-filtrados="clientesFiltrados"
+            :vehiculos-filtrados="vehiculosFiltrados"
+            :cargando-gestion="cargandoGestion"
+            :error-gestion="errorGestion"
+            :cerrable="!guardandoEditor"
+            @cerrar="cerrarGestion"
+            @cambiar-modo="modoGestion = $event"
+            @actualizar="cargarGestion"
+            @limpiar-error="errorGestion = ''"
+            @editar-cliente="abrirEditor($event._id)"
+            @eliminar-cliente="borrarClienteGestion($event)"
+            @editar-vehiculo="abrirEditor($event.cliente?._id, $event)"
+            @eliminar-vehiculo="borrarVehiculoGestion($event)"
+          />
+        </template>
+
+        <template v-else-if="pantalla === 'buscar'">
+          <section class="page-heading">
+            <div>
               <h1>Todo en <span class="heading-accent">marcha</span><span class="heading-period">.</span></h1>
               <p>Encuentra un vehículo, revisa su historial o inicia una nueva reparación.</p>
             </div>
-            <button class="secondary-button" @click="cargarSeguimiento">
-              <span class="material-icons">view_kanban</span> Ver órdenes activas
-            </button>
           </section>
 
           <section class="search-panel">
@@ -793,26 +1010,173 @@ watch(
           <section class="order-summary" aria-label="Estado de las órdenes">
             <div class="summary-label">ESTADO DE LAS ÓRDENES</div>
             <div class="summary-grid">
-              <article class="summary-card summary-recibido">
-                <span class="summary-dot dot-received"></span>
-                <div><span>Recibidos</span><strong>{{ resumenOrdenes.recibidos }}</strong></div>
-              </article>
-              <article class="summary-card summary-diagnostico">
-                <span class="summary-dot dot-diagnosis"></span>
-                <div><span>En diagnóstico</span><strong>{{ resumenOrdenes.diagnostico }}</strong></div>
-              </article>
-              <article class="summary-card summary-reparacion">
-                <span class="summary-dot dot-repair"></span>
-                <div><span>En reparación</span><strong>{{ resumenOrdenes.reparacion }}</strong></div>
-              </article>
-              <article class="summary-card summary-proceso">
+              <article
+                class="summary-card summary-proceso"
+                :class="{ 'is-selected': estadoResumenSeleccionado === 'proceso' }"
+                role="button"
+                tabindex="0"
+                :aria-pressed="estadoResumenSeleccionado === 'proceso'"
+                @click="seleccionarEstadoResumen('proceso')"
+                @keydown.enter.prevent="seleccionarEstadoResumen('proceso')"
+                @keydown.space.prevent="seleccionarEstadoResumen('proceso')"
+              >
                 <span class="summary-dot dot-progress"></span>
                 <div><span>En proceso</span><strong>{{ resumenOrdenes.enProceso }}</strong></div>
               </article>
-              <article class="summary-card summary-listo">
+              <article
+                class="summary-card summary-recibido"
+                :class="{ 'is-selected': estadoResumenSeleccionado === 'recibidos' }"
+                role="button"
+                tabindex="0"
+                :aria-pressed="estadoResumenSeleccionado === 'recibidos'"
+                @click="seleccionarEstadoResumen('recibidos')"
+                @keydown.enter.prevent="seleccionarEstadoResumen('recibidos')"
+                @keydown.space.prevent="seleccionarEstadoResumen('recibidos')"
+              >
+                <span class="summary-dot dot-received"></span>
+                <div><span>Recibidos</span><strong>{{ resumenOrdenes.recibidos }}</strong></div>
+              </article>
+              <article
+                class="summary-card summary-diagnostico"
+                :class="{ 'is-selected': estadoResumenSeleccionado === 'diagnostico' }"
+                role="button"
+                tabindex="0"
+                :aria-pressed="estadoResumenSeleccionado === 'diagnostico'"
+                @click="seleccionarEstadoResumen('diagnostico')"
+                @keydown.enter.prevent="seleccionarEstadoResumen('diagnostico')"
+                @keydown.space.prevent="seleccionarEstadoResumen('diagnostico')"
+              >
+                <span class="summary-dot dot-diagnosis"></span>
+                <div><span>En diagnóstico</span><strong>{{ resumenOrdenes.diagnostico }}</strong></div>
+              </article>
+              <article
+                class="summary-card summary-reparacion"
+                :class="{ 'is-selected': estadoResumenSeleccionado === 'reparacion' }"
+                role="button"
+                tabindex="0"
+                :aria-pressed="estadoResumenSeleccionado === 'reparacion'"
+                @click="seleccionarEstadoResumen('reparacion')"
+                @keydown.enter.prevent="seleccionarEstadoResumen('reparacion')"
+                @keydown.space.prevent="seleccionarEstadoResumen('reparacion')"
+              >
+                <span class="summary-dot dot-repair"></span>
+                <div><span>En reparación</span><strong>{{ resumenOrdenes.reparacion }}</strong></div>
+              </article>
+              <article
+                class="summary-card summary-listo"
+                :class="{ 'is-selected': estadoResumenSeleccionado === 'listos' }"
+                role="button"
+                tabindex="0"
+                :aria-pressed="estadoResumenSeleccionado === 'listos'"
+                @click="seleccionarEstadoResumen('listos')"
+                @keydown.enter.prevent="seleccionarEstadoResumen('listos')"
+                @keydown.space.prevent="seleccionarEstadoResumen('listos')"
+              >
                 <span class="summary-dot dot-ready"></span>
                 <div><span>Listos</span><strong>{{ resumenOrdenes.listos }}</strong></div>
               </article>
+            </div>
+
+            <div
+              v-if="estadoResumenSeleccionado && infoEstadoSeleccionado"
+              class="history-section summary-detail-panel"
+              role="region"
+              :aria-label="infoEstadoSeleccionado.titulo"
+            >
+              <div class="section-heading summary-detail-heading">
+                <div class="summary-detail-title-group">
+                  <div class="summary-detail-title-row">
+                    <h2>{{ infoEstadoSeleccionado.titulo }}</h2>
+                    <span class="summary-count-badge">{{ ordenesEstadoSeleccionado.length }}</span>
+                  </div>
+                  <p>{{ infoEstadoSeleccionado.descripcion }}</p>
+                </div>
+                <div class="summary-detail-actions">
+                  <button
+                    type="button"
+                    class="secondary-button"
+                    @click="cerrarEstadoResumen"
+                  >
+                    <span class="material-icons">arrow_back</span> Regresar al resumen
+                  </button>
+                </div>
+              </div>
+
+              <div v-if="cargandoResumen && !ordenesEstadoSeleccionado.length" class="loading-board">
+                <span class="material-icons">autorenew</span> Cargando vehículos del estado seleccionado…
+              </div>
+
+              <div v-else-if="ordenesEstadoSeleccionado.length" class="summary-table-wrap">
+                <table class="summary-orders-table">
+                  <thead>
+                    <tr>
+                      <th>PLACA</th>
+                      <th>MARCA Y MODELO</th>
+                      <th>CLIENTE</th>
+                      <th>SERVICIO / REPARACIÓN</th>
+                      <th>FECHA DE INGRESO</th>
+                      <th>ESTADO</th>
+                      <th>MECÁNICO</th>
+                      <th class="summary-th-actions">ACCIONES</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="orden in ordenesEstadoSeleccionado" :key="orden._id">
+                      <td class="summary-td-plate">
+                        <span class="summary-plate-badge">{{ orden.vehiculo?.placa || '—' }}</span>
+                      </td>
+                      <td>
+                        <div class="summary-cell-stack">
+                          <strong>{{ normalizarTexto(orden.vehiculo?.marca) }} {{ normalizarTexto(orden.vehiculo?.modelo) }}</strong>
+                          <small v-if="orden.vehiculo?.anio">Modelo {{ orden.vehiculo.anio }}</small>
+                        </div>
+                      </td>
+                      <td>
+                        <div class="summary-cell-stack">
+                          <strong>{{ normalizarTexto([orden.vehiculo?.cliente?.nombre, orden.vehiculo?.cliente?.apellido].filter(Boolean).join(' ')) || '—' }}</strong>
+                          <small v-if="orden.vehiculo?.cliente?.telefono">{{ orden.vehiculo.cliente.telefono }}</small>
+                        </div>
+                      </td>
+                      <td class="summary-td-service">
+                        <div class="summary-service-text">{{ normalizarTexto(orden.descripcionProblema) || '—' }}</div>
+                      </td>
+                      <td class="summary-td-date">{{ formatoFecha(orden.fechaIngreso) }}</td>
+                      <td class="summary-td-status">
+                        <span class="status-pill" :class="`status-${orden.estado.toLowerCase().replaceAll(' ', '-')}`">
+                          <i></i>{{ orden.estado }}
+                        </span>
+                      </td>
+                      <td class="summary-td-mechanic">
+                        <span :class="{ 'summary-unassigned': !orden.mecanico }">
+                          {{ orden.mecanico ? normalizarTexto(orden.mecanico) : 'Sin asignar' }}
+                        </span>
+                      </td>
+                      <td class="summary-td-actions">
+                        <div class="summary-row-actions">
+                          <button
+                            v-if="orden.vehiculo?.placa"
+                            type="button"
+                            class="summary-action-btn is-primary-soft"
+                            title="Ver ficha del vehículo"
+                            @click="seleccionarVehiculo(orden.vehiculo)"
+                          >
+                            <span class="material-icons">visibility</span> Ficha
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div v-else class="empty-state summary-empty-state">
+                <div class="empty-icon"><span class="material-icons">directions_car</span></div>
+                <strong>{{ infoEstadoSeleccionado.mensajeVacio }}</strong>
+                <p>Cuando una orden de servicio se encuentre en este estado, aparecerá listada aquí automáticamente.</p>
+                <button type="button" class="secondary-button" @click="cerrarEstadoResumen">
+                  <span class="material-icons">arrow_back</span> Regresar al resumen
+                </button>
+              </div>
             </div>
           </section>
 
@@ -835,7 +1199,6 @@ watch(
           >
             <div class="section-heading">
               <div>
-                <div class="eyebrow">NUEVO REGISTRO</div>
                 <h2>{{ clienteEncontrado ? 'Registra un vehículo' : 'No encontramos este registro' }}</h2>
                 <p>{{ clienteEncontrado ? 'Completa los datos del vehículo para continuar.' : 'Registra los datos del propietario y del vehículo para continuar.' }}</p>
               </div>
@@ -900,7 +1263,7 @@ watch(
         <template v-else-if="pantalla === 'ficha'">
           <div class="back-link" @click="abrirBusqueda"><span class="material-icons">arrow_back</span> Volver a la búsqueda</div>
           <section class="page-heading vehicle-heading">
-            <div><div class="eyebrow">FICHA DEL VEHÍCULO</div><h1>{{ vehiculo?.marca }} {{ vehiculo?.modelo }}</h1><p>Consulta la información del vehículo y sus reparaciones anteriores.</p></div>
+            <div><h1>{{ vehiculo?.marca }} {{ vehiculo?.modelo }}</h1><p>Consulta la información del vehículo y sus reparaciones anteriores.</p></div>
             <button class="primary-button" @click="abrirNuevaOrden"><span class="material-icons">add</span> Crear nueva orden</button>
           </section>
 
@@ -916,7 +1279,7 @@ watch(
 
           <section class="history-section">
             <div class="section-heading">
-              <div><div class="eyebrow">REGISTRO DE SERVICIOS</div><h2>Historial de reparaciones</h2><p>Todos los trabajos realizados a este vehículo.</p></div>
+              <div><h2>Historial de reparaciones</h2><p>Todos los trabajos realizados a este vehículo.</p></div>
               <span class="result-count">{{ historial.length }} {{ historial.length === 1 ? 'orden' : 'órdenes' }}</span>
             </div>
             <div v-if="historial.length" class="history-table-wrap">
@@ -935,7 +1298,7 @@ watch(
 
           <section class="history-section delivered-section">
             <div class="section-heading">
-              <div><div class="eyebrow">VEHÍCULOS ENTREGADOS</div><h2>Historial de entregas</h2><p>Reparaciones ya finalizadas y entregadas al cliente.</p></div>
+              <div><h2>Historial de entregas</h2><p>Reparaciones ya finalizadas y entregadas al cliente.</p></div>
               <span class="result-count">{{ historialEntregados.length }} {{ historialEntregados.length === 1 ? 'entrega' : 'entregas' }}</span>
             </div>
             <div v-if="historialEntregados.length" class="history-table-wrap">
@@ -954,7 +1317,7 @@ watch(
 
         <template v-else-if="pantalla === 'orden'">
           <div class="back-link" @click="pantalla = 'ficha'"><span class="material-icons">arrow_back</span> Volver a la ficha</div>
-          <section class="page-heading"><div><div class="eyebrow">ORDEN DE SERVICIO</div><h1>Nueva orden de reparación</h1><p>Registra el trabajo para {{ vehiculo?.placa }} · {{ vehiculo?.marca }} {{ vehiculo?.modelo }}.</p></div></section>
+          <section class="page-heading"><div><h1>Nueva orden de reparación</h1><p>Registra el trabajo para {{ vehiculo?.placa }} · {{ vehiculo?.marca }} {{ vehiculo?.modelo }}.</p></div></section>
           <section class="order-form-panel">
             <div class="panel-title"><div class="panel-icon"><span class="material-icons">assignment_add</span></div><div><h2>Detalles de la orden</h2><p>Los campos marcados con <b>*</b> son obligatorios.</p></div></div>
             <form class="form-grid" @submit.prevent="guardarOrden">
@@ -987,12 +1350,11 @@ watch(
 
         <template v-else-if="pantalla === 'historial'">
           <section class="page-heading">
-            <div><div class="eyebrow">HISTORIAL GENERAL</div><h1>Historial del taller</h1><p>Consulta todas las órdenes registradas, ordenadas por fecha más reciente.</p></div>
-            <button class="secondary-button" @click="abrirHistorial"><span class="material-icons">refresh</span> Actualizar</button>
+            <div><h1>Historial del taller</h1><p>Consulta todas las órdenes registradas, ordenadas por fecha más reciente.</p></div>
           </section>
           <section class="history-section">
             <div class="section-heading">
-              <div><div class="eyebrow">REGISTRO COMPLETO</div><h2>Órdenes del taller</h2><p>Todo el historial del servicio organizado por fecha.</p></div>
+              <div><h2>Órdenes del taller</h2><p>Todo el historial del servicio organizado por fecha.</p></div>
               <span class="result-count">{{ historialGeneralOrdenado.length }} {{ historialGeneralOrdenado.length === 1 ? 'orden' : 'órdenes' }}</span>
             </div>
             <div class="history-filters" role="search" aria-label="Filtrar historial del taller">
@@ -1049,12 +1411,11 @@ watch(
 
         <template v-else-if="pantalla === 'entregados'">
           <section class="page-heading">
-            <div><div class="eyebrow">ÓRDENES COMPLETADAS</div><h1>Vehículos entregados</h1><p>Consulta las órdenes que ya fueron entregadas a sus propietarios.</p></div>
-            <button class="secondary-button" @click="abrirEntregados"><span class="material-icons">refresh</span> Actualizar</button>
+            <div><h1>Vehículos entregados</h1><p>Consulta las órdenes que ya fueron entregadas a sus propietarios.</p></div>
           </section>
           <section class="history-section">
             <div class="section-heading">
-              <div><div class="eyebrow">REGISTRO DE ENTREGAS</div><h2>Órdenes entregadas</h2><p>Vehículos cuyo proceso de reparación ha finalizado.</p></div>
+              <div><h2>Órdenes entregadas</h2><p>Vehículos cuyo proceso de reparación ha finalizado.</p></div>
               <span class="result-count">{{ ordenesEntregadas.length }} {{ ordenesEntregadas.length === 1 ? 'orden' : 'órdenes' }}</span>
             </div>
             <div v-if="ordenesEntregadas.length" class="history-table-wrap">
@@ -1089,8 +1450,7 @@ watch(
 
         <template v-else-if="pantalla === 'seguimiento'">
           <section class="page-heading">
-            <div><div class="eyebrow">TALLER EN TIEMPO REAL</div><h1>Seguimiento de órdenes</h1><p>Visualiza el avance de cada reparación activa.</p></div>
-            <button class="secondary-button" @click="cargarSeguimiento"><span class="material-icons">refresh</span> Actualizar</button>
+            <div><h1>Seguimiento de órdenes</h1><p>Visualiza el avance de cada reparación activa.</p></div>
           </section>
           <section class="tracker-toolbar">
             <div class="tracker-title"><div class="panel-icon"><span class="material-icons">view_kanban</span></div><div><h2>Tablero de reparaciones</h2><p>{{ ordenes.length }} órdenes activas en el taller</p></div></div>
@@ -1143,5 +1503,48 @@ watch(
 
       </main>
     </div>
+
+    <!-- Edición conjunta: propietario + vehículo -->
+    <EditorClienteVehiculo
+      v-if="editorAbierto"
+      v-model:form="editorForm"
+      :guardando="guardandoEditor"
+      :error="errorEditor"
+      @cerrar="cerrarEditor"
+      @guardar="guardarEditor"
+    />
+
+    <!-- Confirmaciones (reemplazan confirm() del navegador) -->
+    <ModalDialogo
+      v-if="dialogo.abierto"
+      :titulo="dialogo.titulo"
+      ancho="460px"
+      :cerrable="!dialogo.ocupado"
+      @cerrar="dialogo.abierto = false"
+    >
+      <q-item-label class="confirm-copy">{{ dialogo.mensaje }}</q-item-label>
+      <q-item-label v-if="dialogo.nota" class="confirm-note">{{ dialogo.nota }}</q-item-label>
+      <template #pie>
+        <q-btn
+          flat
+          no-caps
+          class="secondary-button"
+          :label="dialogo.textoCancelar"
+          :disable="dialogo.ocupado"
+          @click="dialogo.abierto = false"
+        />
+        <q-btn
+          unelevated
+          no-caps
+          color="primary"
+          class="primary-button"
+          :class="{ 'danger-button': dialogo.peligro }"
+          :label="dialogo.ocupado ? 'Procesando…' : dialogo.textoConfirmar"
+          :loading="dialogo.ocupado"
+          :disable="dialogo.ocupado"
+          @click="ejecutarDialogo"
+        />
+      </template>
+    </ModalDialogo>
   </div>
 </template>

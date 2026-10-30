@@ -13,20 +13,29 @@ const apiClient = axios.create({
   },
 })
 
+let obtenerTokenSesion = () => ''
+let manejarSesionExpirada = () => {}
+
+export function configurarClienteApi({ obtenerToken, alExpirarSesion }) {
+  if (typeof obtenerToken === 'function') obtenerTokenSesion = obtenerToken
+  if (typeof alExpirarSesion === 'function') manejarSesionExpirada = alExpirarSesion
+}
+
 apiClient.interceptors.request.use((config) => {
-  const token = sessionStorage.getItem('taller-token')
-  if (token) config.headers.Authorization = 'Bearer ' + token
+  const token = obtenerTokenSesion()
+  if (token) config.headers.Authorization = `Bearer ${token}`
   return config
 })
 
-apiClient.interceptors.response.use((response) => response, (error) => {
-  if (error.response?.status === 401 && !error.config?.url?.includes('/auth/login')) {
-    sessionStorage.removeItem('taller-token')
-    sessionStorage.removeItem('taller-usuario')
-    if (window.location.pathname !== '/login') window.location.assign('/login')
-  }
-  return Promise.reject(error)
-})
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401 && !error.config?.url?.includes('/auth/login')) {
+      manejarSesionExpirada()
+    }
+    return Promise.reject(error)
+  },
+)
 
 export async function iniciarSesionApi(credenciales) {
   return request(apiClient.post('/auth/login', credenciales), 'No fue posible iniciar sesión')
@@ -43,11 +52,12 @@ async function request(promise, mensajePredeterminado) {
     const errores = Array.isArray(datos?.errores) ? datos.errores.filter(Boolean) : []
     const mensajeServidor = [datos?.mensaje, ...errores].filter(Boolean).join(' ')
     const errorApi = new Error(
-      mensajeServidor || (error.code === 'ECONNABORTED'
-        ? 'La solicitud tardó demasiado. Intenta de nuevo.'
-        : error.response
-          ? mensajePredeterminado
-          : 'No se pudo conectar con el servidor. Verifica que el backend esté activo.'),
+      mensajeServidor ||
+        (error.code === 'ECONNABORTED'
+          ? 'La solicitud tardó demasiado. Intenta de nuevo.'
+          : error.response
+            ? mensajePredeterminado
+            : 'No se pudo conectar con el servidor. Verifica que el backend esté activo.'),
     )
     errorApi.status = error.response?.status
     throw errorApi
@@ -88,8 +98,34 @@ export function crearCliente(cliente) {
   return request(apiClient.post('/clientes', cliente), 'No fue posible registrar el cliente')
 }
 
+export function obtenerClientes() {
+  return request(apiClient.get('/clientes'), 'No fue posible obtener los clientes')
+}
+
+export function actualizarCliente(id, datos) {
+  return request(apiClient.put(`/clientes/${id}`, datos), 'No fue posible actualizar el cliente')
+}
+
+
+export function eliminarCliente(id) {
+  return request(apiClient.delete(`/clientes/${id}`), 'No fue posible eliminar el cliente')
+}
+
 export function crearVehiculo(vehiculo) {
   return request(apiClient.post('/vehiculos', vehiculo), 'No fue posible registrar el vehículo')
+}
+
+export function obtenerVehiculos() {
+  return request(apiClient.get('/vehiculos'), 'No fue posible obtener los vehículos')
+}
+
+export function actualizarVehiculo(id, datos) {
+  return request(apiClient.put(`/vehiculos/${id}`, datos), 'No fue posible actualizar el vehículo')
+}
+
+
+export function eliminarVehiculo(id) {
+  return request(apiClient.delete(`/vehiculos/${id}`), 'No fue posible eliminar el vehículo')
 }
 
 export function crearOrden(orden) {
@@ -100,7 +136,7 @@ export function crearOrden(orden) {
 }
 
 export function actualizarOrden(id, datos) {
-  return request(apiClient.put('/ordenes/' + id, datos), 'No fue posible guardar los detalles de la orden')
+  return request(apiClient.put(`/ordenes/${id}`, datos), 'No fue posible guardar los detalles de la orden')
 }
 
 export function registrarAbono(id, abono) {

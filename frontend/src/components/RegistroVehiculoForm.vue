@@ -17,6 +17,7 @@ const vehiculo = reactive({
   modelo: '',
   anio: null,
   color: '',
+  kilometraje: null,
 })
 
 const guardando = ref(false)
@@ -46,10 +47,10 @@ async function guardarVehiculo() {
 <template>
   <q-card flat bordered>
     <q-card-section>
-      <div class="text-h6">Registrar vehículo</div>
-      <div class="text-caption text-grey-7">
-        Propietario: {{ cliente.nombre }} {{ cliente.apellido }}
-      </div>
+      <q-item-label class="text-h6">Registrar vehículo</q-item-label>
+      <q-item-label caption class="text-grey-7">
+        Propietario: {{ props.cliente.nombre }} {{ props.cliente.apellido }}
+      </q-item-label>
     </q-card-section>
 
     <q-separator />
@@ -63,44 +64,44 @@ async function guardarVehiculo() {
           :rules="[(valor) => /^[A-Za-z0-9-]{5,9}$/.test((valor || '').trim()) || 'Ingresa una placa válida de 5 a 8 caracteres']"
         />
 
-        <div class="row q-col-gutter-md">
-          <div class="col-12 col-sm-6">
+        <q-card-section class="row q-col-gutter-md q-pa-none">
+          <q-item-section class="col-12 col-sm-6">
             <q-input
               v-model="vehiculo.marca"
               outlined
               label="Marca"
               :rules="[(valor) => !!valor || 'La marca es obligatoria']"
             />
-          </div>
+          </q-item-section>
 
-          <div class="col-12 col-sm-6">
+          <q-item-section class="col-12 col-sm-6">
             <q-input
               v-model="vehiculo.modelo"
               outlined
               label="Modelo"
               :rules="[(valor) => !!valor || 'El modelo es obligatorio']"
             />
-          </div>
-        </div>
+          </q-item-section>
+        </q-card-section>
 
-        <div class="row q-col-gutter-md">
-          <div class="col-12 col-sm-6">
+        <q-card-section class="row q-col-gutter-md q-pa-none">
+          <q-item-section class="col-12 col-sm-6">
             <q-input
               v-model.number="vehiculo.anio"
               outlined
               type="number"
               label="Año"
             />
-          </div>
+          </q-item-section>
 
-          <div class="col-12 col-sm-6">
+          <q-item-section class="col-12 col-sm-6">
             <q-input
               v-model="vehiculo.color"
               outlined
               label="Color"
             />
-          </div>
-        </div>
+          </q-item-section>
+        </q-card-section>
 
         <q-input
           v-model.number="vehiculo.kilometraje"
@@ -117,14 +118,14 @@ async function guardarVehiculo() {
           {{ error }}
         </q-banner>
 
-        <div class="row justify-end">
+        <q-card-actions align="right" class="q-pa-none">
           <q-btn
             type="submit"
             color="primary"
             label="Guardar vehículo"
             :loading="guardando"
           />
-        </div>
+        </q-card-actions>
       </q-form>
     </q-card-section>
   </q-card>

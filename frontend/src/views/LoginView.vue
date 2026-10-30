@@ -22,9 +22,8 @@ const mensajeRecuperacion = ref('')
 const redirectPath = computed(() => route.query.redirect || '/')
 
 onMounted(() => {
-  const correoGuardado = localStorage.getItem('taller-correo-recordado')
-  if (correoGuardado) {
-    form.email = correoGuardado
+  if (authStore.correoRecordado) {
+    form.email = authStore.correoRecordado
     recordarCorreo.value = true
   }
 })
@@ -40,8 +39,7 @@ async function iniciarSesion() {
   cargando.value = true
   try {
     await authStore.login({ email, password })
-    if (recordarCorreo.value) localStorage.setItem('taller-correo-recordado', email)
-    else localStorage.removeItem('taller-correo-recordado')
+    authStore.actualizarCorreoRecordado(recordarCorreo.value ? email : '')
     await router.replace(String(redirectPath.value))
   } catch (err) {
     error.value = err?.message || 'No se pudo iniciar sesión.'

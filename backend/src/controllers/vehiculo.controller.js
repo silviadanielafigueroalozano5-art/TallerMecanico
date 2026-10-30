@@ -14,20 +14,37 @@ async function existePlacaEquivalente(placa, excluirId) {
   return Boolean(await Vehiculo.exists(filtro));
 }
 
-// GET /api/vehiculos - listar todos
+// GET /api/vehiculos - listar todos, incluyendo el estado de la orden de reparación más reciente
 exports.obtenerVehiculos = async (req, res) => {
   try {
     const vehiculos = await Vehiculo.find()
       .populate("cliente", "nombre apellido telefono")
-      .sort({ createdAt: -1 });
-    res.json(vehiculos);
+      .sort({ createdAt: -1 })
+      .lean();
+
+    // La orden más reciente de cada vehículo define su etapa de reparación actual.
+    const ordenes = await OrdenReparacion.find({})
+      .select("vehiculo estado fechaIngreso")
+      .sort({ fechaIngreso: -1, createdAt: -1 })
+      .lean();
+    const estadoPorVehiculo = new Map();
+    for (const orden of ordenes) {
+      const clave = String(orden.vehiculo);
+      if (!estadoPorVehiculo.has(clave)) estadoPorVehiculo.set(clave, orden.estado);
+    }
+
+    res.json(
+      vehiculos.map((vehiculo) => ({
+        ...vehiculo,
+        estadoReparacion: estadoPorVehiculo.get(String(vehiculo._id)) || null,
+      })),
+    );
   } catch (error) {
     res
       .status(500)
       .json({ mensaje: "Error al obtener vehículos", error: error.message });
   }
 };
-
 // GET /api/vehiculos/placa/:placa - BUSCAR POR PLACA (núcleo del flujo del negocio)
 exports.consultarEstadoPublico = async (req, res) => {
   try {
@@ -104,7 +121,7 @@ exports.actualizarVehiculo = async (req, res) => {
       const tieneOrdenes = await OrdenReparacion.exists({ vehiculo: vehiculo._id });
       if (tieneOrdenes) return res.status(409).json({ mensaje: "No se puede cambiar el propietario de un vehículo con historial de órdenes." });
     }
-    const actualizado = await Vehiculo.findByIdAndUpdate(req.params.id, { $set: req.body }, { new: true, runValidators: true });
+    const actualizado = await Vehiculo.findByIdAndUpdate(req.params.id, { $set: req.body }, { returnDocument: "after", runValidators: true });
     if (!actualizado) return res.status(404).json({ mensaje: "Vehículo no encontrado." });
     res.json(actualizado);
   } catch (error) {
