@@ -11,7 +11,7 @@ import GestorClientesModal from '../components/GestorClientesModal.vue'
 import EditorClienteVehiculo from '../components/EditorClienteVehiculo.vue'
 import { useGestionClientes } from '../utils/useGestionClientes'
 
-const estados = ['Recibido', 'En DiagnÃ³stico', 'En ReparaciÃ³n', 'Listo', 'Entregado']
+const estados = ['Recibido', 'En Diagnóstico', 'En Reparación', 'Listo', 'Entregado']
 const valorOtro = '__otro__'
 const marcasVehiculo = [
   'Audi',
@@ -19,7 +19,7 @@ const marcasVehiculo = [
   'BYD',
   'Chevrolet',
   'Chery',
-  'CitroÃ«n',
+  'Citroën',
   'Fiat',
   'Ford',
   'Honda',
@@ -44,7 +44,7 @@ const modelosPorMarca = {
   BYD: ['Dolphin', 'Yuan Plus', 'Song Plus', 'Seagull', 'Tang'],
   Chevrolet: ['Aveo', 'Captiva', 'Cruze', 'Joy', 'Onix', 'Sail', 'Spark', 'Tracker'],
   Chery: ['Arrizo 5', 'Tiggo 2', 'Tiggo 4', 'Tiggo 7', 'Tiggo 8'],
-  CitroÃ«n: ['C3', 'C4', 'C-ElysÃ©e', 'Berlingo'],
+  Citroën: ['C3', 'C4', 'C-Elysée', 'Berlingo'],
   Fiat: ['500', 'Argo', 'Cronos', 'Mobi', 'Pulse', 'Strada'],
   Ford: ['Bronco', 'Escape', 'EcoSport', 'Fiesta', 'Focus', 'Ranger', 'Territory'],
   Honda: ['Accord', 'City', 'Civic', 'CR-V', 'Fit', 'HR-V'],
@@ -64,29 +64,29 @@ const modelosPorMarca = {
   Volvo: ['S60', 'XC40', 'XC60', 'XC90'],
 }
 const mecanicosDisponibles = [
-  'Carlos RamÃ­rez',
-  'AndrÃ©s GÃ³mez',
-  'Juan PÃ©rez',
+  'Carlos Ramírez',
+  'Andrés Gómez',
+  'Juan Pérez',
   'Miguel Torres',
-  'David RodrÃ­guez',
+  'David Rodríguez',
 ]
 const tiposReparacion = [
   'Cambio de aceite y filtros',
-  'ReparaciÃ³n y cambio de llantas',
-  'ReparaciÃ³n del sistema de frenos',
+  'Reparación y cambio de llantas',
+  'Reparación del sistema de frenos',
   'Cambio de pastillas, discos y zapatas',
-  'RevisiÃ³n y cambio de baterÃ­a',
-  'Cambio de bujÃ­as',
+  'Revisión y cambio de batería',
+  'Cambio de bujías',
   'Cambio de correas y mangueras',
-  'ReparaciÃ³n bÃ¡sica del motor',
-  'ReparaciÃ³n de suspensiÃ³n y direcciÃ³n',
-  'Cambio de amortiguadores, rÃ³tulas y bujes',
-  'RevisiÃ³n del sistema elÃ©ctrico',
+  'Reparación básica del motor',
+  'Reparación de suspensión y dirección',
+  'Cambio de amortiguadores, rótulas y bujes',
+  'Revisión del sistema eléctrico',
   'Cambio de bombillos y fusibles',
-  'RevisiÃ³n del sistema de refrigeraciÃ³n',
+  'Revisión del sistema de refrigeración',
   'Cambio de refrigerante',
-  'ReparaciÃ³n bÃ¡sica del sistema de escape',
-  'RevisiÃ³n de niveles de lÃ­quidos',
+  'Reparación básica del sistema de escape',
+  'Revisión de niveles de líquidos',
   'Otro',
 ]
 const pantalla = ref('buscar')
@@ -124,11 +124,6 @@ const edicionesOrden = reactive({})
 const abonosOrden = reactive({})
 const guardandoOrdenId = ref('')
 const etapaRegistro = ref(1)
-const marcaSeleccionada = ref('')
-const marcaPersonalizada = ref('')
-const modeloSeleccionado = ref('')
-const modeloPersonalizado = ref('')
-const modelosDisponibles = computed(() => modelosPorMarca[marcaSeleccionada.value] || [])
 
 const propietarioForm = reactive({
   nombre: '',
@@ -138,6 +133,8 @@ const propietarioForm = reactive({
 })
 const vehiculoForm = reactive({
   placa: '',
+  marca: '',
+  modelo: '',
   anio: new Date().getFullYear(),
   kilometraje: '',
 })
@@ -233,29 +230,29 @@ const cargandoResumen = ref(false)
 
 const metadatosEstadoResumen = {
   recibidos: {
-    titulo: 'VehÃ­culos recibidos',
-    descripcion: 'VehÃ­culos que acaban de ingresar al taller y esperan evaluaciÃ³n inicial.',
-    mensajeVacio: 'No hay vehÃ­culos en estado Recibido en este momento.',
+    titulo: 'Vehículos recibidos',
+    descripcion: 'Vehículos que acaban de ingresar al taller y esperan evaluación inicial.',
+    mensajeVacio: 'No hay vehículos en estado Recibido en este momento.',
   },
   diagnostico: {
-    titulo: 'VehÃ­culos en diagnÃ³stico',
-    descripcion: 'VehÃ­culos que estÃ¡n siendo evaluados para identificar sus fallas.',
-    mensajeVacio: 'No hay vehÃ­culos en diagnÃ³stico actualmente.',
+    titulo: 'Vehículos en diagnóstico',
+    descripcion: 'Vehículos que están siendo evaluados para identificar sus fallas.',
+    mensajeVacio: 'No hay vehículos en diagnóstico actualmente.',
   },
   reparacion: {
-    titulo: 'VehÃ­culos en reparaciÃ³n',
-    descripcion: 'VehÃ­culos con trabajos de reparaciÃ³n actualmente en ejecuciÃ³n.',
-    mensajeVacio: 'No hay vehÃ­culos en reparaciÃ³n en este momento.',
+    titulo: 'Vehículos en reparación',
+    descripcion: 'Vehículos con trabajos de reparación actualmente en ejecución.',
+    mensajeVacio: 'No hay vehículos en reparación en este momento.',
   },
   proceso: {
-    titulo: 'VehÃ­culos en proceso',
-    descripcion: 'VehÃ­culos con trabajos pendientes o actividades en curso dentro del taller.',
-    mensajeVacio: 'No hay vehÃ­culos con Ã³rdenes en proceso actualmente.',
+    titulo: 'Vehículos en proceso',
+    descripcion: 'Vehículos con trabajos pendientes o actividades en curso dentro del taller.',
+    mensajeVacio: 'No hay vehículos con órdenes en proceso actualmente.',
   },
   listos: {
-    titulo: 'VehÃ­culos listos',
-    descripcion: 'VehÃ­culos cuya reparaciÃ³n ha terminado y estÃ¡n listos para su entrega.',
-    mensajeVacio: 'No hay vehÃ­culos listos para entrega en este momento.',
+    titulo: 'Vehículos listos',
+    descripcion: 'Vehículos cuya reparación ha terminado y están listos para su entrega.',
+    mensajeVacio: 'No hay vehículos listos para entrega en este momento.',
   },
 }
 
@@ -272,10 +269,10 @@ const ordenesActivasUnicas = computed(() => {
 
 const ordenesPorEstadoResumen = computed(() => ({
   recibidos: ordenesActivasUnicas.value.filter((orden) => orden.estado === 'Recibido'),
-  diagnostico: ordenesActivasUnicas.value.filter((orden) => orden.estado === 'En DiagnÃ³stico'),
-  reparacion: ordenesActivasUnicas.value.filter((orden) => orden.estado === 'En ReparaciÃ³n'),
+  diagnostico: ordenesActivasUnicas.value.filter((orden) => orden.estado === 'En Diagnóstico'),
+  reparacion: ordenesActivasUnicas.value.filter((orden) => orden.estado === 'En Reparación'),
   proceso: ordenesActivasUnicas.value.filter((orden) =>
-    ['Recibido', 'En DiagnÃ³stico', 'En ReparaciÃ³n'].includes(orden.estado),
+    ['Recibido', 'En Diagnóstico', 'En Reparación'].includes(orden.estado),
   ),
   listos: ordenesActivasUnicas.value.filter((orden) => orden.estado === 'Listo'),
 }))
@@ -383,9 +380,9 @@ function cambiarMarca() {
 
 async function buscar() {
   const valor = termino.value.trim()
-  if (!valor) { error.value = tipoBusqueda.value === 'placa' ? 'Escribe la placa del vehÃ­culo.' : 'Escribe la cÃ©dula del propietario.'; return }
-  if (tipoBusqueda.value === 'placa' && !/^[A-Za-z0-9]{5,8}$/.test(valor.replace(/[\s-]/g, ''))) { error.value = 'La placa debe tener entre 5 y 8 letras o nÃºmeros.'; return }
-  if (tipoBusqueda.value === 'cedula' && !/^[A-Za-z0-9 .-]{5,20}$/.test(valor)) { error.value = 'La cÃ©dula debe tener entre 5 y 20 caracteres vÃ¡lidos.'; return }
+  if (!valor) { error.value = tipoBusqueda.value === 'placa' ? 'Escribe la placa del vehículo.' : 'Escribe la cédula del propietario.'; return }
+  if (tipoBusqueda.value === 'placa' && !/^[A-Za-z0-9]{5,8}$/.test(valor.replace(/[\s-]/g, ''))) { error.value = 'La placa debe tener entre 5 y 8 letras o números.'; return }
+  if (tipoBusqueda.value === 'cedula' && !/^[A-Za-z0-9 .-]{5,20}$/.test(valor)) { error.value = 'La cédula debe tener entre 5 y 20 caracteres válidos.'; return }
   cargando.value = true
   limpiarMensajes()
   noEncontrado.value = false
@@ -411,7 +408,7 @@ async function buscar() {
       noEncontrado.value = true
       if (tipoBusqueda.value === 'cedula') { propietarioForm.cedula = valor; propietarioForm.nombre = ''; propietarioForm.telefono = ''; propietarioForm.email = ''; vehiculoForm.placa = '' }
       else { vehiculoForm.placa = valor.toUpperCase(); propietarioForm.nombre = ''; propietarioForm.cedula = ''; propietarioForm.telefono = ''; propietarioForm.email = '' }
-    } else error.value = err.message || 'No fue posible completar la bÃºsqueda.'
+    } else error.value = err.message || 'No fue posible completar la búsqueda.'
   } finally { cargando.value = false }
 }
 
@@ -441,7 +438,7 @@ async function seleccionarVehiculo(auto) {
     const resultado = await workshop.buscarPorPlaca(auto.placa)
     abrirFicha(resultado)
   } catch (err) {
-    error.value = err.message || 'No fue posible cargar la ficha del vehÃ­culo.'
+    error.value = err.message || 'No fue posible cargar la ficha del vehículo.'
   } finally {
     cargando.value = false
   }
@@ -453,12 +450,12 @@ async function registrarPropietario() {
   const cedula = propietarioForm.cedula.trim()
   const telefono = propietarioForm.telefono.trim()
   const email = propietarioForm.email.trim()
-  if (nombreCompleto.length < 2 || nombreCompleto.length > 80) { error.value = 'Escribe un nombre de al menos 2 caracteres y mÃ¡ximo 80.'; return }
-  if (!/^[\p{L} .'-]+$/u.test(nombreCompleto)) { error.value = 'El nombre solo puede contener letras, espacios, puntos, apÃ³strofes o guiones.'; return }
-  if (!/^[\p{L}\p{N} .-]{5,20}$/u.test(cedula)) { error.value = 'La cÃ©dula debe tener entre 5 y 20 caracteres vÃ¡lidos.'; return }
+  if (nombreCompleto.length < 2 || nombreCompleto.length > 80) { error.value = 'Escribe un nombre de al menos 2 caracteres y máximo 80.'; return }
+  if (!/^[\p{L} .'-]+$/u.test(nombreCompleto)) { error.value = 'El nombre solo puede contener letras, espacios, puntos, apóstrofes o guiones.'; return }
+  if (!/^[\p{L}\p{N} .-]{5,20}$/u.test(cedula)) { error.value = 'La cédula debe tener entre 5 y 20 caracteres válidos.'; return }
   const digitosTelefono = telefono.replace(/\D/g, '')
-  if (!/^[+()\d .-]+$/.test(telefono) || digitosTelefono.length < 7 || digitosTelefono.length > 15) { error.value = 'El telÃ©fono debe tener entre 7 y 15 dÃ­gitos.'; return }
-  if (email && !esCorreoValido(email)) { error.value = 'Ingresa un correo electrÃ³nico vÃ¡lido.'; return }
+  if (!/^[+()\d .-]+$/.test(telefono) || digitosTelefono.length < 7 || digitosTelefono.length > 15) { error.value = 'El teléfono debe tener entre 7 y 15 dígitos.'; return }
+  if (email && !esCorreoValido(email)) { error.value = 'Ingresa un correo electrónico válido.'; return }
   guardando.value = true
   const partesNombre = nombreCompleto.split(' ')
   try {
@@ -471,26 +468,22 @@ async function registrarPropietario() {
 async function registrarVehiculo() {
   limpiarMensajes()
   const placa = vehiculoForm.placa.trim()
-  const marca = marcaSeleccionada.value === 'Otro'
-    ? marcaPersonalizada.value.trim()
-    : marcaSeleccionada.value
-  const modelo = marcaSeleccionada.value === 'Otro' || modeloSeleccionado.value === 'Otro'
-    ? modeloPersonalizado.value.trim()
-    : modeloSeleccionado.value
+  const marca = vehiculoForm.marca.trim()
+  const modelo = vehiculoForm.modelo.trim()
   const kilometrajeIngresado = vehiculoForm.kilometraje
-  if (kilometrajeIngresado === '' || kilometrajeIngresado === null || kilometrajeIngresado === undefined) { error.value = 'Ingresa el kilometraje actual del vehÃ­culo.'; return }
+  if (kilometrajeIngresado === '' || kilometrajeIngresado === null || kilometrajeIngresado === undefined) { error.value = 'Ingresa el kilometraje actual del vehículo.'; return }
   const kilometraje = Number(kilometrajeIngresado)
-  if (!/^[A-Za-z0-9]{5,8}$/.test(placa.replace(/[\s-]/g, ''))) { error.value = 'La placa debe tener entre 5 y 8 letras o nÃºmeros.'; return }
+  if (!/^[A-Za-z0-9]{5,8}$/.test(placa.replace(/[\s-]/g, ''))) { error.value = 'La placa debe tener entre 5 y 8 letras o números.'; return }
   if (marca.length < 2 || marca.length > 80) { error.value = 'La marca debe tener entre 2 y 80 caracteres.'; return }
   if (!modelo || modelo.length > 80) { error.value = 'El modelo debe tener entre 1 y 80 caracteres.'; return }
-  if (!Number.isInteger(Number(vehiculoForm.anio)) || Number(vehiculoForm.anio) < 1900 || Number(vehiculoForm.anio) > new Date().getFullYear() + 1) { error.value = 'El aÃ±o del vehÃ­culo no es vÃ¡lido.'; return }
+  if (!Number.isInteger(Number(vehiculoForm.anio)) || Number(vehiculoForm.anio) < 1900 || Number(vehiculoForm.anio) > new Date().getFullYear() + 1) { error.value = 'El año del vehículo no es válido.'; return }
   if (!Number.isSafeInteger(kilometraje) || kilometraje < 0 || kilometraje > 2000000) { error.value = 'Ingresa el kilometraje actual como un entero entre 0 y 2.000.000.'; return }
   guardando.value = true
   try {
     const nuevo = await workshop.registrarVehiculo({ ...vehiculoForm, placa: placa.toUpperCase(), marca, modelo, anio: Number(vehiculoForm.anio), kilometraje })
-    pantalla.value = 'ficha'; noEncontrado.value = false; aviso.value = 'VehÃ­culo registrado. Ya puedes crear su primera orden.'
+    pantalla.value = 'ficha'; noEncontrado.value = false; aviso.value = 'Vehículo registrado. Ya puedes crear su primera orden.'
     router.push({ name: 'ficha-vehiculo', params: { placa: nuevo.placa } })
-  } catch (err) { error.value = err.message || 'No fue posible registrar el vehÃ­culo.' }
+  } catch (err) { error.value = err.message || 'No fue posible registrar el vehículo.' }
   finally { guardando.value = false }
 }
 
@@ -532,16 +525,16 @@ function actualizarCosto(event, campo) {
 async function guardarOrden() {
   limpiarMensajes()
   const tipos = [...new Set(ordenForm.tiposReparacion.filter(Boolean))]
-  if (!tipos.length) { error.value = 'Selecciona al menos un tipo de reparaciÃ³n.'; return }
-  if (tipos.includes('Otro') && ordenForm.otroTipo.trim().length < 3) { error.value = 'Describe la reparaciÃ³n seleccionada como "Otro" (mÃ­nimo 3 caracteres).'; return }
+  if (!tipos.length) { error.value = 'Selecciona al menos un tipo de reparación.'; return }
+  if (tipos.includes('Otro') && ordenForm.otroTipo.trim().length < 3) { error.value = 'Describe la reparación seleccionada como "Otro" (mínimo 3 caracteres).'; return }
   const repuestos = ordenForm.costoRepuestos === '' ? 0 : Number(ordenForm.costoRepuestos)
   const manoObra = ordenForm.manoObra === '' ? 0 : Number(ordenForm.manoObra)
   if (!Number.isSafeInteger(repuestos) || repuestos < 0 || !Number.isSafeInteger(manoObra) || manoObra < 0 || repuestos + manoObra > 1000000000000) { error.value = 'Los costos de repuestos y mano de obra deben ser enteros no negativos y el total no puede superar 1.000.000.000.000 COP.'; return }
   const mecanicoAsignado = ordenForm.mecanico === 'Otro'
     ? ordenForm.mecanicoPersonalizado.trim()
     : ordenForm.mecanico.trim()
-  if (ordenForm.mecanico === 'Otro' && mecanicoAsignado.length < 2) { error.value = 'El nombre del mecÃ¡nico debe tener al menos 2 caracteres.'; return }
-  if (mecanicoAsignado.length > 100) { error.value = 'El nombre del mecÃ¡nico no puede superar los 100 caracteres.'; return }
+  if (ordenForm.mecanico === 'Otro' && mecanicoAsignado.length < 2) { error.value = 'El nombre del mecánico debe tener al menos 2 caracteres.'; return }
+  if (mecanicoAsignado.length > 100) { error.value = 'El nombre del mecánico no puede superar los 100 caracteres.'; return }
   guardando.value = true
   try {
     await workshop.crearOrdenReparacion({
@@ -551,7 +544,7 @@ async function guardarOrden() {
       mecanico: mecanicoAsignado,
     })
     pantalla.value = 'ficha'
-    aviso.value = 'La orden se creÃ³ en estado Recibido.'
+    aviso.value = 'La orden se creó en estado Recibido.'
     router.push({ name: 'ficha-vehiculo', params: { placa: vehiculo.value.placa } })
   } catch (err) { error.value = err.message || 'No fue posible crear la orden.' }
   finally { guardando.value = false }
@@ -596,7 +589,7 @@ async function cargarOrdenes() {
   try {
     await workshop.cargarOrdenesActivas()
   } catch (err) {
-    error.value = err.message || 'No fue posible cargar las Ã³rdenes activas.'
+    error.value = err.message || 'No fue posible cargar las órdenes activas.'
   } finally {
     cargandoSeguimiento.value = false
   }
@@ -607,7 +600,7 @@ async function cargarResumenOrdenes() {
   try {
     await workshop.cargarOrdenesActivas()
   } catch (err) {
-    error.value = err.message || 'No fue posible cargar el estado de las Ã³rdenes.'
+    error.value = err.message || 'No fue posible cargar el estado de las órdenes.'
   } finally {
     cargandoResumen.value = false
   }
@@ -642,9 +635,9 @@ async function actualizarEstado(orden, evento) {
     if (control) control.value = orden.estado
     abrirConfirmacion({
       titulo: 'Confirmar entrega',
-      mensaje: 'Confirma que el cliente pagÃ³ la cuenta completa y retirÃ³ el vehÃ­culo.',
-      nota: 'La orden pasarÃ¡ al estado Entregado y dejarÃ¡ de aparecer en el tablero de reparaciones activas.',
-      textoConfirmar: 'SÃ­, entregar',
+      mensaje: 'Confirma que el cliente pagó la cuenta completa y retiró el vehículo.',
+      nota: 'La orden pasará al estado Entregado y dejará de aparecer en el tablero de reparaciones activas.',
+      textoConfirmar: 'Sí, entregar',
       peligro: false,
       accion: () => workshop.actualizarEstadoOrden(orden, estado).then(() => { aviso.value = 'Orden entregada correctamente.' }),
     })
@@ -719,9 +712,9 @@ async function guardarDetallesOrden(orden) {
     : datos.mecanico.trim()
   const repuestos = Number(datos.costoRepuestos || 0)
   const manoObra = Number(datos.manoObra || 0)
-  if ((diagnostico && diagnostico.length < 3) || diagnostico.length > 5000) { error.value = 'El diagnÃ³stico debe tener al menos 3 caracteres o quedar vacÃ­o (mÃ¡ximo 5.000).'; return }
-  if ((trabajosRealizados && trabajosRealizados.length < 3) || trabajosRealizados.length > 5000) { error.value = 'Los trabajos realizados deben tener al menos 3 caracteres o quedar vacÃ­os (mÃ¡ximo 5.000).'; return }
-  if ((datos.mecanico === 'Otro' && mecanico.length < 2) || (datos.mecanico !== 'Otro' && mecanico && mecanico.length < 2) || mecanico.length > 100) { error.value = 'El mecÃ¡nico debe tener al menos 2 caracteres o quedar vacÃ­o (mÃ¡ximo 100).'; return }
+  if ((diagnostico && diagnostico.length < 3) || diagnostico.length > 5000) { error.value = 'El diagnóstico debe tener al menos 3 caracteres o quedar vacío (máximo 5.000).'; return }
+  if ((trabajosRealizados && trabajosRealizados.length < 3) || trabajosRealizados.length > 5000) { error.value = 'Los trabajos realizados deben tener al menos 3 caracteres o quedar vacíos (máximo 5.000).'; return }
+  if ((datos.mecanico === 'Otro' && mecanico.length < 2) || (datos.mecanico !== 'Otro' && mecanico && mecanico.length < 2) || mecanico.length > 100) { error.value = 'El mecánico debe tener al menos 2 caracteres o quedar vacío (máximo 100).'; return }
   if (!Number.isSafeInteger(repuestos) || repuestos < 0 || !Number.isSafeInteger(manoObra) || manoObra < 0 || repuestos + manoObra > 1000000000000) { error.value = 'Los costos deben ser enteros no negativos y el total no puede superar 1.000.000.000.000 COP.'; return }
   error.value = ''
   guardandoOrdenId.value = orden._id
@@ -733,7 +726,7 @@ async function guardarDetallesOrden(orden) {
 }
 
 /* ------------------------------------------------------------------
- * DiÃ¡logos propios (sin alert / confirm del navegador)
+ * Diálogos propios (sin alert / confirm del navegador)
  * ------------------------------------------------------------------ */
 const dialogo = reactive({
   abierto: false,
@@ -750,7 +743,7 @@ const dialogo = reactive({
 function abrirDialogo(opciones) {
   Object.assign(dialogo, {
     abierto: true,
-    titulo: opciones.titulo || 'Confirmar acciÃ³n',
+    titulo: opciones.titulo || 'Confirmar acción',
     mensaje: opciones.mensaje || '',
     nota: opciones.nota || '',
     textoConfirmar: opciones.textoConfirmar || 'Aceptar',
@@ -769,7 +762,7 @@ function abrirConfirmacion(opciones) {
       try {
         await opciones.accion()
       } catch (err) {
-        error.value = err.message || 'No fue posible completar la acciÃ³n.'
+        error.value = err.message || 'No fue posible completar la acción.'
       } finally {
         dialogo.abierto = false
       }
@@ -789,8 +782,8 @@ async function ejecutarDialogo() {
 }
 
 /* ------------------------------------------------------------------
- * Clientes registrados + ediciÃ³n de propietario y vehÃ­culo
- * La lÃ³gica vive en utils/useGestionClientes.js
+ * Clientes registrados + edición de propietario y vehículo
+ * La lógica vive en utils/useGestionClientes.js
  * ------------------------------------------------------------------ */
 const {
   modoGestion,
@@ -815,7 +808,7 @@ const {
 } = useGestionClientes({ aviso, abrirConfirmacion })
 
 function formatoFecha(fecha) {
-  if (!fecha) return 'â€”'
+  if (!fecha) return '—'
   return new Date(fecha).toLocaleDateString('es-CO', {
     day: '2-digit',
     month: 'short',
@@ -856,7 +849,7 @@ watch(
         try {
           await workshop.buscarPorPlaca(placa)
         } catch (err) {
-          error.value = err.message || 'No fue posible cargar el vehÃ­culo solicitado.'
+          error.value = err.message || 'No fue posible cargar el vehículo solicitado.'
           pantalla.value = 'buscar'
           await router.replace({ name: 'buscar' })
         } finally {
@@ -876,18 +869,18 @@ watch(
     <aside
       id="sidebar-drawer"
       class="sidebar-drawer"
-      aria-label="MenÃº de navegaciÃ³n"
+      aria-label="Menú de navegación"
     >
       <div class="drawer-header">
         <a class="brand" href="#" @click.prevent="abrirBusqueda">
           <span class="brand-mark"><span class="material-icons">build</span></span>
-          <span class="brand-copy"><strong>Torque</strong><small>TALLER MECÃNICO</small></span>
+          <span class="brand-copy"><strong>Torque</strong><small>TALLER MECÁNICO</small></span>
         </a>
       </div>
 
-      <div class="drawer-section-label">NAVEGACIÃ“N PRINCIPAL</div>
+      <div class="drawer-section-label">NAVEGACIÓN PRINCIPAL</div>
 
-      <nav class="drawer-nav" aria-label="NavegaciÃ³n principal">
+      <nav class="drawer-nav" aria-label="Navegación principal">
         <button
           class="drawer-link"
           type="button"
@@ -895,7 +888,7 @@ watch(
           @click="abrirBusqueda"
         >
           <span class="drawer-link-icon"><span class="material-icons">search</span></span>
-          <span class="drawer-link-text">Buscar vehÃ­culo</span>
+          <span class="drawer-link-text">Buscar vehículo</span>
         </button>
 
         <button
@@ -942,7 +935,7 @@ watch(
       <div class="drawer-footer">
         <button class="drawer-link drawer-logout" type="button" @click="cerrarSesion">
           <span class="drawer-link-icon"><span class="material-icons">logout</span></span>
-          <span class="drawer-link-text">Cerrar sesiÃ³n</span>
+          <span class="drawer-link-text">Cerrar sesión</span>
         </button>
       </div>
     </aside>
@@ -963,7 +956,7 @@ watch(
           <section class="page-heading">
             <div>
               <h1>Clientes registrados</h1>
-              <p>Consulta los propietarios, su contacto y los vehÃ­culos vinculados.</p>
+              <p>Consulta los propietarios, su contacto y los vehículos vinculados.</p>
             </div>
           </section>
 
@@ -992,22 +985,22 @@ watch(
           <section class="page-heading">
             <div>
               <h1>Todo en <span class="heading-accent">marcha</span><span class="heading-period">.</span></h1>
-              <p>Encuentra un vehÃ­culo, revisa su historial o inicia una nueva reparaciÃ³n.</p>
+              <p>Encuentra un vehículo, revisa su historial o inicia una nueva reparación.</p>
             </div>
           </section>
 
           <section class="search-panel">
             <div class="search-intro">
               <div class="search-icon"><span class="material-icons">manage_search</span></div>
-              <div><h2>Â¿QuÃ© vehÃ­culo buscas?</h2><p>Consulta rÃ¡pidamente la informaciÃ³n y el historial de servicio.</p></div>
+              <div><h2>¿Qué vehículo buscas?</h2><p>Consulta rápidamente la información y el historial de servicio.</p></div>
             </div>
             <div class="search-controls">
               <div class="search-field">
                 <label for="search-input">Buscar por</label>
                 <div class="input-combo">
-                  <select v-model="tipoBusqueda" aria-label="Tipo de bÃºsqueda" @change="termino = ''">
-                    <option value="placa">Placa del vehÃ­culo</option>
-                    <option value="cedula">CÃ©dula / CC del propietario</option>
+                  <select v-model="tipoBusqueda" aria-label="Tipo de búsqueda" @change="termino = ''">
+                    <option value="placa">Placa del vehículo</option>
+                    <option value="cedula">Cédula / CC del propietario</option>
                   </select>
                   <span class="material-icons">expand_more</span>
                   <input
@@ -1016,26 +1009,26 @@ watch(
                     required
                     maxlength="20"
                     autocomplete="off"
-                    :placeholder="tipoBusqueda === 'placa' ? 'Ej. ABC-123' : 'NÃºmero de cÃ©dula / CC'"
+                    :placeholder="tipoBusqueda === 'placa' ? 'Ej. ABC-123' : 'Número de cédula / CC'"
                     @keyup.enter="buscar"
                   />
                   <button class="search-submit" :disabled="!termino.trim() || cargando" @click="buscar">
                     <span class="material-icons">{{ cargando ? 'hourglass_top' : 'search' }}</span>
-                    {{ cargando ? 'Buscandoâ€¦' : 'Buscar' }}
+                    {{ cargando ? 'Buscando…' : 'Buscar' }}
                   </button>
                 </div>
               </div>
             </div>
             <div class="search-footer">
-              <div class="search-hint"><span class="material-icons">info</span>Puedes buscar por placa o por nÃºmero de cÃ©dula del propietario.</div>
+              <div class="search-hint"><span class="material-icons">info</span>Puedes buscar por placa o por número de cédula del propietario.</div>
               <button v-if="!noEncontrado" class="register-link" type="button" @click="iniciarRegistro">
-                <span class="material-icons">person_add</span> Â¿No aparece? Registrar vehÃ­culo
+                <span class="material-icons">person_add</span> ¿No aparece? Registrar vehículo
               </button>
             </div>
           </section>
 
-          <section class="order-summary" aria-label="Estado de las Ã³rdenes">
-            <div class="summary-label">ESTADO DE LAS Ã“RDENES</div>
+          <section class="order-summary" aria-label="Estado de las órdenes">
+            <div class="summary-label">ESTADO DE LAS ÓRDENES</div>
             <div class="summary-grid">
               <article
                 class="summary-card summary-proceso"
@@ -1074,7 +1067,7 @@ watch(
                 @keydown.space.prevent="seleccionarEstadoResumen('diagnostico')"
               >
                 <span class="summary-dot dot-diagnosis"></span>
-                <div><span>En diagnÃ³stico</span><strong>{{ resumenOrdenes.diagnostico }}</strong></div>
+                <div><span>En diagnóstico</span><strong>{{ resumenOrdenes.diagnostico }}</strong></div>
               </article>
               <article
                 class="summary-card summary-reparacion"
@@ -1087,7 +1080,7 @@ watch(
                 @keydown.space.prevent="seleccionarEstadoResumen('reparacion')"
               >
                 <span class="summary-dot dot-repair"></span>
-                <div><span>En reparaciÃ³n</span><strong>{{ resumenOrdenes.reparacion }}</strong></div>
+                <div><span>En reparación</span><strong>{{ resumenOrdenes.reparacion }}</strong></div>
               </article>
               <article
                 class="summary-card summary-listo"
@@ -1130,7 +1123,7 @@ watch(
               </div>
 
               <div v-if="cargandoResumen && !ordenesEstadoSeleccionado.length" class="loading-board">
-                <span class="material-icons">autorenew</span> Cargando vehÃ­culos del estado seleccionadoâ€¦
+                <span class="material-icons">autorenew</span> Cargando vehículos del estado seleccionado…
               </div>
 
               <div v-else-if="ordenesEstadoSeleccionado.length" class="summary-table-wrap">
@@ -1140,17 +1133,17 @@ watch(
                       <th>PLACA</th>
                       <th>MARCA Y MODELO</th>
                       <th>CLIENTE</th>
-                      <th>SERVICIO / REPARACIÃ“N</th>
+                      <th>SERVICIO / REPARACIÓN</th>
                       <th>FECHA DE INGRESO</th>
                       <th>ESTADO</th>
-                      <th>MECÃNICO</th>
+                      <th>MECÁNICO</th>
                       <th class="summary-th-actions">ACCIONES</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr v-for="orden in ordenesEstadoSeleccionado" :key="orden._id">
                       <td class="summary-td-plate">
-                        <span class="summary-plate-badge">{{ orden.vehiculo?.placa || 'â€”' }}</span>
+                        <span class="summary-plate-badge">{{ orden.vehiculo?.placa || '—' }}</span>
                       </td>
                       <td>
                         <div class="summary-cell-stack">
@@ -1160,12 +1153,12 @@ watch(
                       </td>
                       <td>
                         <div class="summary-cell-stack">
-                          <strong>{{ normalizarTexto([orden.vehiculo?.cliente?.nombre, orden.vehiculo?.cliente?.apellido].filter(Boolean).join(' ')) || 'â€”' }}</strong>
+                          <strong>{{ normalizarTexto([orden.vehiculo?.cliente?.nombre, orden.vehiculo?.cliente?.apellido].filter(Boolean).join(' ')) || '—' }}</strong>
                           <small v-if="orden.vehiculo?.cliente?.telefono">{{ orden.vehiculo.cliente.telefono }}</small>
                         </div>
                       </td>
                       <td class="summary-td-service">
-                        <div class="summary-service-text">{{ normalizarTexto(orden.descripcionProblema) || 'â€”' }}</div>
+                        <div class="summary-service-text">{{ normalizarTexto(orden.descripcionProblema) || '—' }}</div>
                       </td>
                       <td class="summary-td-date">{{ formatoFecha(orden.fechaIngreso) }}</td>
                       <td class="summary-td-status">
@@ -1184,7 +1177,7 @@ watch(
                             v-if="orden.vehiculo?.placa"
                             type="button"
                             class="summary-action-btn is-primary-soft"
-                            title="Ver ficha del vehÃ­culo"
+                            title="Ver ficha del vehículo"
                             @click="seleccionarVehiculo(orden.vehiculo)"
                           >
                             <span class="material-icons">visibility</span> Ficha
@@ -1199,7 +1192,7 @@ watch(
               <div v-else class="empty-state summary-empty-state">
                 <div class="empty-icon"><span class="material-icons">directions_car</span></div>
                 <strong>{{ infoEstadoSeleccionado.mensajeVacio }}</strong>
-                <p>Cuando una orden de servicio se encuentre en este estado, aparecerÃ¡ listada aquÃ­ automÃ¡ticamente.</p>
+                <p>Cuando una orden de servicio se encuentre en este estado, aparecerá listada aquí automáticamente.</p>
                 <button type="button" class="secondary-button" @click="cerrarEstadoResumen">
                   <span class="material-icons">arrow_back</span> Regresar al resumen
                 </button>
@@ -1209,12 +1202,12 @@ watch(
 
           <section v-if="vehiculosCliente.length > 1 && pantalla === 'buscar'" class="selection-panel">
             <div class="section-heading">
-              <div><h2>{{ clienteEncontrado ? `VehÃ­culos de ${nombrePropietario}` : 'VehÃ­culos asociados a esta cÃ©dula / CC' }}</h2><p>Selecciona el vehÃ­culo que quieres consultar.</p></div>
-              <span class="result-count">{{ vehiculosCliente.length }} vehÃ­culos</span>
+              <div><h2>{{ clienteEncontrado ? `Vehículos de ${nombrePropietario}` : 'Vehículos asociados a esta cédula / CC' }}</h2><p>Selecciona el vehículo que quieres consultar.</p></div>
+              <span class="result-count">{{ vehiculosCliente.length }} vehículos</span>
             </div>
             <button v-for="auto in vehiculosCliente" :key="auto._id" class="vehicle-choice" @click="seleccionarVehiculo(auto)">
               <div class="vehicle-choice-icon"><span class="material-icons">directions_car</span></div>
-              <div><strong>{{ auto.marca }} {{ auto.modelo }}</strong><span>{{ auto.anio || 'AÃ±o no registrado' }} Â· {{ auto.placa }}</span></div>
+              <div><strong>{{ auto.marca }} {{ auto.modelo }}</strong><span>{{ auto.anio || 'Año no registrado' }} · {{ auto.placa }}</span></div>
               <span class="material-icons choice-arrow">arrow_forward</span>
             </button>
           </section>
@@ -1226,23 +1219,23 @@ watch(
           >
             <div class="section-heading">
               <div>
-                <h2>{{ clienteEncontrado ? 'Registra un vehÃ­culo' : 'No encontramos este registro' }}</h2>
-                <p>{{ clienteEncontrado ? 'Completa los datos del vehÃ­culo para continuar.' : 'Registra los datos del propietario y del vehÃ­culo para continuar.' }}</p>
+                <h2>{{ clienteEncontrado ? 'Registra un vehículo' : 'No encontramos este registro' }}</h2>
+                <p>{{ clienteEncontrado ? 'Completa los datos del vehículo para continuar.' : 'Registra los datos del propietario y del vehículo para continuar.' }}</p>
               </div>
               <button class="text-button" @click="noEncontrado = false"><span class="material-icons">close</span></button>
             </div>
             <div class="stepper">
-              <div class="step" :class="{ complete: etapaRegistro > 1, current: etapaRegistro === 1 }"><span>{{ etapaRegistro > 1 ? 'âœ“' : '1' }}</span> Propietario</div>
+              <div class="step" :class="{ complete: etapaRegistro > 1, current: etapaRegistro === 1 }"><span>{{ etapaRegistro > 1 ? '✓' : '1' }}</span> Propietario</div>
               <i></i>
-              <div class="step" :class="{ current: etapaRegistro === 2 }"><span>2</span> VehÃ­culo</div>
+              <div class="step" :class="{ current: etapaRegistro === 2 }"><span>2</span> Vehículo</div>
             </div>
             <form v-if="etapaRegistro === 1" class="form-grid" @submit.prevent="registrarPropietario" novalidate>
               <label class="field field-wide"><span>Nombre completo <b>*</b></span><input v-model="propietarioForm.nombre" required minlength="2" maxlength="80" autocomplete="name" placeholder="Nombre y apellido" /></label>
-              <label class="field"><span>CÃ©dula <b>*</b></span><input v-model="propietarioForm.cedula" required minlength="5" maxlength="20" autocomplete="off" placeholder="NÃºmero de identificaciÃ³n" /></label>
-              <label class="field"><span>TelÃ©fono <b>*</b></span><input v-model="propietarioForm.telefono" required maxlength="24" type="tel" autocomplete="tel" placeholder="NÃºmero de contacto" /></label>
-              <label class="field field-wide"><span>Correo electrÃ³nico (opcional)</span><input v-model="propietarioForm.email" type="email" maxlength="254" autocomplete="email" placeholder="cliente@ejemplo.com" /></label>
+              <label class="field"><span>Cédula <b>*</b></span><input v-model="propietarioForm.cedula" required minlength="5" maxlength="20" autocomplete="off" placeholder="Número de identificación" /></label>
+              <label class="field"><span>Teléfono <b>*</b></span><input v-model="propietarioForm.telefono" required maxlength="24" type="tel" autocomplete="tel" placeholder="Número de contacto" /></label>
+              <label class="field field-wide"><span>Correo electrónico (opcional)</span><input v-model="propietarioForm.email" type="email" maxlength="254" autocomplete="email" placeholder="cliente@ejemplo.com" /></label>
               <div v-if="error" class="feedback error-feedback field-wide" role="alert">{{ error }}</div>
-              <div class="form-actions field-wide"><button class="primary-button" :disabled="guardando">{{ guardando ? 'Guardandoâ€¦' : 'Continuar' }}<span class="material-icons">arrow_forward</span></button></div>
+              <div class="form-actions field-wide"><button class="primary-button" :disabled="guardando">{{ guardando ? 'Guardando…' : 'Continuar' }}<span class="material-icons">arrow_forward</span></button></div>
             </form>
             <form v-else class="form-grid" @submit.prevent="registrarVehiculo" novalidate>
               <label class="field"><span>Placa <b>*</b></span><input v-model="vehiculoForm.placa" required minlength="5" maxlength="9" autocomplete="off" placeholder="Ej. ABC-123" /></label>
@@ -1278,41 +1271,41 @@ watch(
                   placeholder="Escribe el modelo"
                 />
               </label>
-              <label class="field"><span>AÃ±o <b>*</b></span><input v-model.number="vehiculoForm.anio" type="number" min="1900" :max="new Date().getFullYear() + 1" step="1" required /></label>
+              <label class="field"><span>Año <b>*</b></span><input v-model.number="vehiculoForm.anio" type="number" min="1900" :max="new Date().getFullYear() + 1" step="1" required /></label>
               <label class="field field-wide"><span>Kilometraje actual <b>*</b></span><input v-model.number="vehiculoForm.kilometraje" type="number" min="0" max="2000000" step="1" inputmode="numeric" required placeholder="Ej. 62500" /></label>
               <div v-if="error" class="feedback error-feedback field-wide" role="alert">{{ error }}</div>
-              <div class="form-actions field-wide"><button type="button" class="secondary-button" @click="volverPasoRegistro">{{ propietarioExistente ? 'Volver a bÃºsqueda' : 'AtrÃ¡s' }}</button><button class="primary-button" :disabled="guardando" :aria-busy="guardando">{{ guardando ? 'Guardando vehÃ­culoâ€¦' : 'Guardar vehÃ­culo' }}<span class="material-icons">{{ guardando ? 'hourglass_top' : 'check' }}</span></button></div>
+              <div class="form-actions field-wide"><button type="button" class="secondary-button" @click="volverPasoRegistro">{{ propietarioExistente ? 'Volver a búsqueda' : 'Atrás' }}</button><button class="primary-button" :disabled="guardando" :aria-busy="guardando">{{ guardando ? 'Guardando vehículo…' : 'Guardar vehículo' }}<span class="material-icons">{{ guardando ? 'hourglass_top' : 'check' }}</span></button></div>
             </form>
 </section>
 
         </template>
 
         <template v-else-if="pantalla === 'ficha'">
-          <div class="back-link" @click="abrirBusqueda"><span class="material-icons">arrow_back</span> Volver a la bÃºsqueda</div>
+          <div class="back-link" @click="abrirBusqueda"><span class="material-icons">arrow_back</span> Volver a la búsqueda</div>
           <section class="page-heading vehicle-heading">
-            <div><h1>{{ vehiculo?.marca }} {{ vehiculo?.modelo }}</h1><p>Consulta la informaciÃ³n del vehÃ­culo y sus reparaciones anteriores.</p></div>
+            <div><h1>{{ vehiculo?.marca }} {{ vehiculo?.modelo }}</h1><p>Consulta la información del vehículo y sus reparaciones anteriores.</p></div>
             <button class="primary-button" @click="abrirNuevaOrden"><span class="material-icons">add</span> Crear nueva orden</button>
           </section>
 
           <section class="vehicle-summary">
             <div class="car-emblem"><span class="material-icons">directions_car</span></div>
-            <div class="car-primary"><span>PLACA</span><strong>{{ vehiculo?.placa }}</strong><small>{{ vehiculo?.color || 'VehÃ­culo registrado' }}</small></div>
+            <div class="car-primary"><span>PLACA</span><strong>{{ vehiculo?.placa }}</strong><small>{{ vehiculo?.color || 'Vehículo registrado' }}</small></div>
             <div class="summary-divider"></div>
             <div class="car-spec"><span>MARCA Y MODELO</span><strong>{{ vehiculo?.marca }} {{ vehiculo?.modelo }}</strong></div>
-            <div class="car-spec"><span>AÃ‘O</span><strong>{{ vehiculo?.anio || 'â€”' }}</strong></div>
-            <div class="car-spec"><span>KILOMETRAJE</span><strong>{{ vehiculo?.kilometraje ?? 'â€”' }} km</strong></div>
+            <div class="car-spec"><span>AÑO</span><strong>{{ vehiculo?.anio || '—' }}</strong></div>
+            <div class="car-spec"><span>KILOMETRAJE</span><strong>{{ vehiculo?.kilometraje ?? '—' }} km</strong></div>
             <div class="car-owner"><div class="avatar">{{ normalizarTexto(nombrePropietario).slice(0, 2).toUpperCase() }}</div><div><span>PROPIETARIO</span><strong>{{ nombrePropietario }}</strong><small>{{ vehiculo?.cliente?.telefono || vehiculo?.cliente?.cedula || 'Sin contacto registrado' }}</small></div></div>
           </section>
 
           <section class="history-section">
             <div class="section-heading">
-              <div><h2>Historial de reparaciones</h2><p>Todos los trabajos realizados a este vehÃ­culo.</p></div>
-              <span class="result-count">{{ historial.length }} {{ historial.length === 1 ? 'orden' : 'Ã³rdenes' }}</span>
+              <div><h2>Historial de reparaciones</h2><p>Todos los trabajos realizados a este vehículo.</p></div>
+              <span class="result-count">{{ historial.length }} {{ historial.length === 1 ? 'orden' : 'órdenes' }}</span>
             </div>
             <div v-if="historial.length" class="history-table-wrap">
-              <table class="history-table"><thead><tr><th>ORDEN / REPARACIÃ“N</th><th>FECHA DE INGRESO</th><th>ESTADO</th><th>COSTO</th><th></th></tr></thead>
+              <table class="history-table"><thead><tr><th>ORDEN / REPARACIÓN</th><th>FECHA DE INGRESO</th><th>ESTADO</th><th>COSTO</th><th></th></tr></thead>
                 <tbody><tr v-for="(orden, index) in historial" :key="orden._id">
-                  <td><div class="repair-name"><span class="repair-icon" :class="index % 2 ? 'repair-blue' : 'repair-orange'"><span class="material-icons">{{ index % 2 ? 'settings' : 'build' }}</span></span><div><strong>{{ normalizarTexto(orden.descripcionProblema) }}</strong><small>Servicio de reparaciÃ³n</small></div></div></td>
+                  <td><div class="repair-name"><span class="repair-icon" :class="index % 2 ? 'repair-blue' : 'repair-orange'"><span class="material-icons">{{ index % 2 ? 'settings' : 'build' }}</span></span><div><strong>{{ normalizarTexto(orden.descripcionProblema) }}</strong><small>Servicio de reparación</small></div></div></td>
                   <td>{{ formatoFecha(orden.fechaIngreso) }}</td>
                   <td><span class="status-pill" :class="`status-${orden.estado.toLowerCase().replaceAll(' ', '-')}`"><i></i>{{ orden.estado }}</span></td>
                   <td class="cost-cell">{{ formatoDinero(orden.monto) }}</td>
@@ -1320,7 +1313,7 @@ watch(
                 </tr></tbody>
               </table>
             </div>
-            <div v-else class="empty-state"><div class="empty-icon"><span class="material-icons">history</span></div><strong>AÃºn no hay reparaciones registradas</strong><p>Cuando se creen Ã³rdenes para este vehÃ­culo, aparecerÃ¡n aquÃ­.</p><button class="secondary-button" @click="abrirNuevaOrden"><span class="material-icons">add</span> Crear primera orden</button></div>
+            <div v-else class="empty-state"><div class="empty-icon"><span class="material-icons">history</span></div><strong>Aún no hay reparaciones registradas</strong><p>Cuando se creen órdenes para este vehículo, aparecerán aquí.</p><button class="secondary-button" @click="abrirNuevaOrden"><span class="material-icons">add</span> Crear primera orden</button></div>
           </section>
 
           <section class="history-section delivered-section">
@@ -1329,7 +1322,7 @@ watch(
               <span class="result-count">{{ historialEntregados.length }} {{ historialEntregados.length === 1 ? 'entrega' : 'entregas' }}</span>
             </div>
             <div v-if="historialEntregados.length" class="history-table-wrap">
-              <table class="history-table"><thead><tr><th>ORDEN / REPARACIÃ“N</th><th>FECHA DE INGRESO</th><th>FECHA DE ENTREGA</th><th>COSTO</th></tr></thead>
+              <table class="history-table"><thead><tr><th>ORDEN / REPARACIÓN</th><th>FECHA DE INGRESO</th><th>FECHA DE ENTREGA</th><th>COSTO</th></tr></thead>
                 <tbody><tr v-for="orden in historialEntregados" :key="orden._id">
                   <td><div class="repair-name"><span class="repair-icon repair-blue"><span class="material-icons">done</span></span><div><strong>{{ normalizarTexto(orden.descripcionProblema) }}</strong><small>Servicio entregado</small></div></div></td>
                   <td>{{ formatoFecha(orden.fechaIngreso) }}</td>
@@ -1338,31 +1331,31 @@ watch(
                 </tr></tbody>
               </table>
             </div>
-            <div v-else class="empty-state"><div class="empty-icon"><span class="material-icons">check_circle</span></div><strong>No hay entregas registradas</strong><p>Cuando una orden pase a estado entregado, aparecerÃ¡ aquÃ­.</p></div>
+            <div v-else class="empty-state"><div class="empty-icon"><span class="material-icons">check_circle</span></div><strong>No hay entregas registradas</strong><p>Cuando una orden pase a estado entregado, aparecerá aquí.</p></div>
           </section>
         </template>
 
         <template v-else-if="pantalla === 'orden'">
           <div class="back-link" @click="pantalla = 'ficha'"><span class="material-icons">arrow_back</span> Volver a la ficha</div>
-          <section class="page-heading"><div><h1>Nueva orden de reparaciÃ³n</h1><p>Registra el trabajo para {{ vehiculo?.placa }} Â· {{ vehiculo?.marca }} {{ vehiculo?.modelo }}.</p></div></section>
+          <section class="page-heading"><div><h1>Nueva orden de reparación</h1><p>Registra el trabajo para {{ vehiculo?.placa }} · {{ vehiculo?.marca }} {{ vehiculo?.modelo }}.</p></div></section>
           <section class="order-form-panel">
             <div class="panel-title"><div class="panel-icon"><span class="material-icons">assignment_add</span></div><div><h2>Detalles de la orden</h2><p>Los campos marcados con <b>*</b> son obligatorios.</p></div></div>
             <form class="form-grid" @submit.prevent="guardarOrden">
               <div class="field field-wide">
-                <span>Tipo de reparaciÃ³n <b>*</b></span>
-                <div class="repair-options" aria-label="Tipos de reparaciÃ³n">
+                <span>Tipo de reparación <b>*</b></span>
+                <div class="repair-options" aria-label="Tipos de reparación">
                   <label v-for="tipo in tiposReparacion" :key="tipo" class="repair-option">
                     <input v-model="ordenForm.tiposReparacion" type="checkbox" :value="tipo" />
                     <span>{{ tipo }}</span>
                   </label>
                 </div>
               </div>
-              <label v-if="ordenForm.tiposReparacion.includes('Otro')" class="field field-wide"><span>Â¿CuÃ¡l? <b>*</b></span><input v-model="ordenForm.otroTipo" required maxlength="2000" placeholder="Escribe el tipo de reparaciÃ³nâ€¦" /></label>
+              <label v-if="ordenForm.tiposReparacion.includes('Otro')" class="field field-wide"><span>¿Cuál? <b>*</b></span><input v-model="ordenForm.otroTipo" required maxlength="2000" placeholder="Escribe el tipo de reparación…" /></label>
               <label class="field"><span>Repuestos (COP)</span><div class="money-input"><span>$</span><input :value="costosTexto.costoRepuestos" type="text" inputmode="numeric" autocomplete="off" @input="actualizarCosto($event, 'costoRepuestos')" placeholder="0" /></div></label>
               <label class="field"><span>Mano de obra (COP)</span><div class="money-input"><span>$</span><input :value="costosTexto.manoObra" type="text" inputmode="numeric" autocomplete="off" @input="actualizarCosto($event, 'manoObra')" placeholder="0" /></div></label>
               <div class="field"><span>Total estimado</span><strong>{{ formatoDinero((Number(ordenForm.costoRepuestos) || 0) + (Number(ordenForm.manoObra) || 0)) }}</strong></div>
               <label class="field field-wide">
-                <span>MecÃ¡nico asignado (opcional)</span>
+                <span>Mecánico asignado (opcional)</span>
                 <select v-model="ordenForm.mecanico">
                   <option value="">Sin asignar</option>
                   <option v-for="mecanico in mecanicosDisponibles" :key="mecanico" :value="mecanico">{{ mecanico }}</option>
@@ -1370,19 +1363,19 @@ watch(
               </label>
               <label class="field"><span>Fecha de ingreso <b>*</b></span><div class="money-input"><span class="material-icons">today</span><input :value="ordenForm.fechaIngreso" type="date" readonly disabled /></div></label>
               <div class="field field-wide"><span>Estado inicial</span><strong>Recibido</strong></div>
-              <div class="form-actions field-wide"><button type="button" class="secondary-button" @click="pantalla = 'ficha'">Cancelar</button><button class="primary-button" :disabled="guardando">{{ guardando ? 'Creando ordenâ€¦' : 'Crear orden' }}<span class="material-icons">arrow_forward</span></button></div>
+              <div class="form-actions field-wide"><button type="button" class="secondary-button" @click="pantalla = 'ficha'">Cancelar</button><button class="primary-button" :disabled="guardando">{{ guardando ? 'Creando orden…' : 'Crear orden' }}<span class="material-icons">arrow_forward</span></button></div>
             </form>
           </section>
         </template>
 
         <template v-else-if="pantalla === 'historial'">
           <section class="page-heading">
-            <div><h1>Historial del taller</h1><p>Consulta todas las Ã³rdenes registradas, ordenadas por fecha mÃ¡s reciente.</p></div>
+            <div><h1>Historial del taller</h1><p>Consulta todas las órdenes registradas, ordenadas por fecha más reciente.</p></div>
           </section>
           <section class="history-section">
             <div class="section-heading">
-              <div><h2>Ã“rdenes del taller</h2><p>Todo el historial del servicio organizado por fecha.</p></div>
-              <span class="result-count">{{ historialGeneralOrdenado.length }} {{ historialGeneralOrdenado.length === 1 ? 'orden' : 'Ã³rdenes' }}</span>
+              <div><h2>Órdenes del taller</h2><p>Todo el historial del servicio organizado por fecha.</p></div>
+              <span class="result-count">{{ historialGeneralOrdenado.length }} {{ historialGeneralOrdenado.length === 1 ? 'orden' : 'órdenes' }}</span>
             </div>
             <div class="history-filters" role="search" aria-label="Filtrar historial del taller">
               <label class="history-search-field">
@@ -1390,8 +1383,8 @@ watch(
                 <input
                   v-model="filtroHistorialTexto"
                   type="search"
-                  placeholder="Buscar vehÃ­culo, placa o cliente"
-                  aria-label="Buscar por vehÃ­culo, placa o cliente"
+                  placeholder="Buscar vehículo, placa o cliente"
+                  aria-label="Buscar por vehículo, placa o cliente"
                 />
               </label>
               <button
@@ -1408,9 +1401,9 @@ watch(
                 <thead>
                   <tr>
                     <th>FECHA</th>
-                    <th>VEHÃCULO</th>
+                    <th>VEHÍCULO</th>
                     <th>CLIENTE</th>
-                    <th>REPARACIÃ“N</th>
+                    <th>REPARACIÓN</th>
                     <th>ESTADO</th>
                     <th>COSTO</th>
                   </tr>
@@ -1419,7 +1412,7 @@ watch(
                   <tr v-for="orden in historialGeneralOrdenado" :key="orden._id">
                     <td>{{ formatoFecha(orden.fechaIngreso) }}</td>
                     <td><strong>{{ normalizarTexto(orden.vehiculo?.marca) }} {{ normalizarTexto(orden.vehiculo?.modelo) }}</strong><br><small>{{ orden.vehiculo?.placa }}</small></td>
-                    <td>{{ normalizarTexto(orden.vehiculo?.cliente?.nombre || 'â€”') }} {{ normalizarTexto(orden.vehiculo?.cliente?.apellido || '') }}</td>
+                    <td>{{ normalizarTexto(orden.vehiculo?.cliente?.nombre || '—') }} {{ normalizarTexto(orden.vehiculo?.cliente?.apellido || '') }}</td>
                     <td>{{ normalizarTexto(orden.descripcionProblema) }}</td>
                     <td><span class="status-pill" :class="`status-${orden.estado.toLowerCase().replaceAll(' ', '-')}`"><i></i>{{ orden.estado }}</span></td>
                     <td class="cost-cell">{{ formatoDinero(orden.monto) }}</td>
@@ -1430,7 +1423,7 @@ watch(
             <div v-else class="empty-state">
               <div class="empty-icon"><span class="material-icons">{{ historialGeneral.length ? 'search_off' : 'history' }}</span></div>
               <strong>{{ historialGeneral.length ? 'No hay resultados para estos filtros' : 'No hay historial registrado' }}</strong>
-              <p>{{ historialGeneral.length ? 'Prueba con otras fechas, otro vehÃ­culo o el nombre del cliente.' : 'AÃºn no se han creado Ã³rdenes en el taller.' }}</p>
+              <p>{{ historialGeneral.length ? 'Prueba con otras fechas, otro vehículo o el nombre del cliente.' : 'Aún no se han creado órdenes en el taller.' }}</p>
               <button v-if="historialGeneral.length" class="secondary-button" type="button" @click="limpiarFiltrosHistorial">Limpiar filtros</button>
             </div>
           </section>
@@ -1438,21 +1431,21 @@ watch(
 
         <template v-else-if="pantalla === 'entregados'">
           <section class="page-heading">
-            <div><h1>VehÃ­culos entregados</h1><p>Consulta las Ã³rdenes que ya fueron entregadas a sus propietarios.</p></div>
+            <div><h1>Vehículos entregados</h1><p>Consulta las órdenes que ya fueron entregadas a sus propietarios.</p></div>
           </section>
           <section class="history-section">
             <div class="section-heading">
-              <div><h2>Ã“rdenes entregadas</h2><p>VehÃ­culos cuyo proceso de reparaciÃ³n ha finalizado.</p></div>
-              <span class="result-count">{{ ordenesEntregadas.length }} {{ ordenesEntregadas.length === 1 ? 'orden' : 'Ã³rdenes' }}</span>
+              <div><h2>Órdenes entregadas</h2><p>Vehículos cuyo proceso de reparación ha finalizado.</p></div>
+              <span class="result-count">{{ ordenesEntregadas.length }} {{ ordenesEntregadas.length === 1 ? 'orden' : 'órdenes' }}</span>
             </div>
             <div v-if="ordenesEntregadas.length" class="history-table-wrap">
               <table class="history-table">
                 <thead>
                   <tr>
                     <th>FECHA DE ENTREGA</th>
-                    <th>VEHÃCULO</th>
+                    <th>VEHÍCULO</th>
                     <th>CLIENTE</th>
-                    <th>REPARACIÃ“N</th>
+                    <th>REPARACIÓN</th>
                     <th>COSTO</th>
                   </tr>
                 </thead>
@@ -1460,7 +1453,7 @@ watch(
                   <tr v-for="orden in ordenesEntregadas" :key="orden._id">
                     <td>{{ formatoFecha(orden.fechaEntrega) }}</td>
                     <td><strong>{{ normalizarTexto(orden.vehiculo?.marca) }} {{ normalizarTexto(orden.vehiculo?.modelo) }}</strong><br /><small>{{ orden.vehiculo?.placa }}</small></td>
-                    <td>{{ normalizarTexto(orden.vehiculo?.cliente?.nombre || 'â€”') }} {{ normalizarTexto(orden.vehiculo?.cliente?.apellido || '') }}</td>
+                    <td>{{ normalizarTexto(orden.vehiculo?.cliente?.nombre || '—') }} {{ normalizarTexto(orden.vehiculo?.cliente?.apellido || '') }}</td>
                     <td>{{ normalizarTexto(orden.descripcionProblema) }}</td>
                     <td class="cost-cell">{{ formatoDinero(orden.monto) }}</td>
                   </tr>
@@ -1469,21 +1462,21 @@ watch(
             </div>
             <div v-else class="empty-state">
               <div class="empty-icon"><span class="material-icons">task_alt</span></div>
-              <strong>No hay vehÃ­culos entregados</strong>
-              <p>Cuando una orden pase al estado Entregado, aparecerÃ¡ en esta lista.</p>
+              <strong>No hay vehículos entregados</strong>
+              <p>Cuando una orden pase al estado Entregado, aparecerá en esta lista.</p>
             </div>
           </section>
         </template>
 
         <template v-else-if="pantalla === 'seguimiento'">
           <section class="page-heading">
-            <div><h1>Seguimiento de Ã³rdenes</h1><p>Visualiza el avance de cada reparaciÃ³n activa.</p></div>
+            <div><h1>Seguimiento de órdenes</h1><p>Visualiza el avance de cada reparación activa.</p></div>
           </section>
           <section class="tracker-toolbar">
-            <div class="tracker-title"><div class="panel-icon"><span class="material-icons">view_kanban</span></div><div><h2>Tablero de reparaciones</h2><p>{{ ordenes.length }} Ã³rdenes activas en el taller</p></div></div>
-            <label class="filter-input"><span class="material-icons">search</span><input v-model="filtroSeguimiento" placeholder="Filtrar por cliente o vehÃ­culo" /><span class="filter-shortcut">âŒ˜ K</span></label>
+            <div class="tracker-title"><div class="panel-icon"><span class="material-icons">view_kanban</span></div><div><h2>Tablero de reparaciones</h2><p>{{ ordenes.length }} órdenes activas en el taller</p></div></div>
+            <label class="filter-input"><span class="material-icons">search</span><input v-model="filtroSeguimiento" placeholder="Filtrar por cliente o vehículo" /><span class="filter-shortcut">⌘ K</span></label>
           </section>
-          <div v-if="cargandoSeguimiento" class="loading-board"><span class="material-icons">autorenew</span> Cargando Ã³rdenesâ€¦</div>
+          <div v-if="cargandoSeguimiento" class="loading-board"><span class="material-icons">autorenew</span> Cargando órdenes…</div>
           <section v-else class="kanban-board">
             <div v-for="(grupo, index) in gruposOrdenes.slice(0, 4)" :key="grupo.estado" class="kanban-column">
               <div class="kanban-header"><span class="kanban-dot" :class="`dot-${index}`"></span><strong>{{ grupo.estado }}</strong><span class="column-count">{{ grupo.ordenes.length }}</span></div>
@@ -1495,7 +1488,7 @@ watch(
                 <div class="order-client"><div class="avatar small-avatar">{{ normalizarTexto(orden.vehiculo?.cliente?.nombre || 'CL').slice(0, 2).toUpperCase() }}</div><span>{{ normalizarTexto(orden.vehiculo?.cliente?.nombre) }} {{ normalizarTexto(orden.vehiculo?.cliente?.apellido) }}</span><span class="order-date">{{ formatoFecha(orden.fechaIngreso) }}</span></div>
                 <div class="order-card-footer"><strong>{{ formatoDinero(orden.monto) }}</strong><select :value="orden.estado" aria-label="Actualizar estado" @change="actualizarEstado(orden, $event)"><option v-for="estado in obtenerEstadosOrden(orden)" :key="estado" :value="estado">{{ estado }}</option></select></div>
                 <div class="order-payment">
-                  <small>Pagado: {{ formatoDinero(orden.montoPagado || (orden.pagado ? orden.monto : 0)) }} Â· Saldo: {{ formatoDinero(Math.max(0, Number(orden.monto) - Number(orden.montoPagado || (orden.pagado ? orden.monto : 0)))) }}</small>
+                  <small>Pagado: {{ formatoDinero(orden.montoPagado || (orden.pagado ? orden.monto : 0)) }} · Saldo: {{ formatoDinero(Math.max(0, Number(orden.monto) - Number(orden.montoPagado || (orden.pagado ? orden.monto : 0)))) }}</small>
                   <div v-if="orden.estado !== 'Entregado' && Number(orden.monto) > Number(orden.montoPagado || (orden.pagado ? orden.monto : 0))" class="order-payment-entry">
                     <input v-model="abonosOrden[orden._id]" type="number" min="1" :max="Number(orden.monto) - Number(orden.montoPagado || 0)" step="1" placeholder="Valor del abono (COP)" aria-label="Valor del abono en pesos" />
                     <button type="button" class="secondary-button" :disabled="!Number(abonosOrden[orden._id])" @click="registrarAbonoEnOrden(orden)">Registrar abono</button>
@@ -1504,11 +1497,11 @@ watch(
                 </div>
 
                 <details class="order-edit">
-                  <summary>DiagnÃ³stico, trabajo y costos</summary>
+                  <summary>Diagnóstico, trabajo y costos</summary>
                   <div class="order-edit-fields">
-                    <label>DiagnÃ³stico<textarea v-model="obtenerEdicionOrden(orden).diagnostico" maxlength="5000" rows="2" placeholder="QuÃ© se encontrÃ³"></textarea></label>
-                    <label>Trabajo realizado<textarea v-model="obtenerEdicionOrden(orden).trabajosRealizados" maxlength="5000" rows="2" placeholder="QuÃ© se reparÃ³"></textarea></label>
-                    <label>MecÃ¡nico
+                    <label>Diagnóstico<textarea v-model="obtenerEdicionOrden(orden).diagnostico" maxlength="5000" rows="2" placeholder="Qué se encontró"></textarea></label>
+                    <label>Trabajo realizado<textarea v-model="obtenerEdicionOrden(orden).trabajosRealizados" maxlength="5000" rows="2" placeholder="Qué se reparó"></textarea></label>
+                    <label>Mecánico
                       <select v-model="obtenerEdicionOrden(orden).mecanico">
                         <option v-if="obtenerEdicionOrden(orden).mecanico && !mecanicosDisponibles.includes(obtenerEdicionOrden(orden).mecanico)" :value="obtenerEdicionOrden(orden).mecanico">{{ obtenerEdicionOrden(orden).mecanico }}</option>
                         <option value="">Sin asignar</option>
@@ -1518,20 +1511,20 @@ watch(
                     <label>Repuestos (COP)<input :value="formatearCostoOrden(obtenerEdicionOrden(orden).costoRepuestos)" type="text" inputmode="numeric" autocomplete="off" placeholder="0" @input="actualizarCostoOrden($event, orden, 'costoRepuestos')"></label>
                     <label>Mano de obra (COP)<input :value="formatearCostoOrden(obtenerEdicionOrden(orden).manoObra)" type="text" inputmode="numeric" autocomplete="off" placeholder="0" @input="actualizarCostoOrden($event, orden, 'manoObra')"></label>
                     <strong>Total: {{ formatoDinero((Number(obtenerEdicionOrden(orden).costoRepuestos) || 0) + (Number(obtenerEdicionOrden(orden).manoObra) || 0)) }}</strong>
-                    <button type="button" class="primary-button" :disabled="guardandoOrdenId === orden._id" @click="guardarDetallesOrden(orden)">{{ guardandoOrdenId === orden._id ? 'Guardandoâ€¦' : 'Guardar cambios' }}</button>
+                    <button type="button" class="primary-button" :disabled="guardandoOrdenId === orden._id" @click="guardarDetallesOrden(orden)">{{ guardandoOrdenId === orden._id ? 'Guardando…' : 'Guardar cambios' }}</button>
                   </div>
                 </details>
 </article>
-              <div v-if="!grupo.ordenes.length" class="column-empty">No hay Ã³rdenes en esta etapa.</div>
+              <div v-if="!grupo.ordenes.length" class="column-empty">No hay órdenes en esta etapa.</div>
             </div>
           </section>
-          <div v-if="!cargandoSeguimiento && !ordenesFiltradas.length && !error" class="empty-state board-empty"><div class="empty-icon"><span class="material-icons">task_alt</span></div><strong>{{ filtroSeguimiento ? 'No hay resultados' : 'Todo al dÃ­a' }}</strong><p>{{ filtroSeguimiento ? 'Prueba con otro nombre o placa.' : 'No hay Ã³rdenes activas en el taller por ahora.' }}</p><button class="secondary-button" @click="abrirBusqueda"><span class="material-icons">search</span> Buscar vehÃ­culo</button></div>
+          <div v-if="!cargandoSeguimiento && !ordenesFiltradas.length && !error" class="empty-state board-empty"><div class="empty-icon"><span class="material-icons">task_alt</span></div><strong>{{ filtroSeguimiento ? 'No hay resultados' : 'Todo al día' }}</strong><p>{{ filtroSeguimiento ? 'Prueba con otro nombre o placa.' : 'No hay órdenes activas en el taller por ahora.' }}</p><button class="secondary-button" @click="abrirBusqueda"><span class="material-icons">search</span> Buscar vehículo</button></div>
         </template>
 
       </main>
     </div>
 
-    <!-- EdiciÃ³n conjunta: propietario + vehÃ­culo -->
+    <!-- Edición conjunta: propietario + vehículo -->
     <EditorClienteVehiculo
       v-if="editorAbierto"
       v-model:form="editorForm"
@@ -1566,7 +1559,7 @@ watch(
           color="primary"
           class="primary-button"
           :class="{ 'danger-button': dialogo.peligro }"
-          :label="dialogo.ocupado ? 'Procesandoâ€¦' : dialogo.textoConfirmar"
+          :label="dialogo.ocupado ? 'Procesando…' : dialogo.textoConfirmar"
           :loading="dialogo.ocupado"
           :disable="dialogo.ocupado"
           @click="ejecutarDialogo"
