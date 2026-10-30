@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 const apiBaseUrl = import.meta.env.PROD
-  ? 'https://tallermecanico-1.onrender.com/api'
+  ? '/api'
   : import.meta.env.VITE_API_URL || '/api'
 
 const apiClient = axios.create({
