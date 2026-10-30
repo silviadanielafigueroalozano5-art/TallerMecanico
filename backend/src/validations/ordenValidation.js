@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-const { ESTADOS } = require("../../models/OrdenReparacion");
+const { ESTADOS } = require("../models/OrdenReparacion");
 const ALLOWED_CREATE = new Set(["vehiculo", "descripcionProblema", "estado", "costoRepuestos", "manoObra", "mecanico"]);
 const ALLOWED_UPDATE = new Set(["descripcionProblema", "diagnostico", "trabajosRealizados", "costoRepuestos", "manoObra", "mecanico"]);
 const own = (object, key) => Object.prototype.hasOwnProperty.call(object, key);

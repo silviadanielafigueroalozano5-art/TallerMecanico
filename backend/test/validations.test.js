@@ -1,11 +1,10 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const mongoose = require("mongoose");
-const { validarCliente } = require("../src/validations/validations/clienteValidation");
-const { validarVehiculo, normalizarPlaca } = require("../src/validations/validations/vehiculoValidation");
-const { validarOrden } = require("../src/validations/validations/ordenValidation");
-const { validarId } = require("../src/validations/validations/idValidation");
-const { validarPlacaParam } = require("../src/validations/validations/vehiculoValidation");
+const { validarCliente } = require("../src/validations/clienteValidation");
+const { validarVehiculo, normalizarPlaca, validarPlacaParam } = require("../src/validations/vehiculoValidation");
+const { validarOrden } = require("../src/validations/ordenValidation");
+const { validarId } = require("../src/validations/idValidation");
 const { esCorreoValido } = require("../src/validations/email");
 const Cliente = require("../src/models/Cliente");
 const Vehiculo = require("../src/models/Vehiculo");

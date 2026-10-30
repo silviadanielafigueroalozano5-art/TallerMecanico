@@ -1,12 +1,12 @@
 const path = require("path");
 const mongoose = require("mongoose");
-require("dotenv").config({ path: path.resolve(__dirname, "../.env") });
+require("dotenv").config({ path: path.resolve(__dirname, "../../.env") });
 
-const conectarDB = require("./config/database");
-const Cliente = require("./models/Cliente");
-const Vehiculo = require("./models/Vehiculo");
-const OrdenReparacion = require("./models/OrdenReparacion");
-const { sincronizarHistorialBase } = require("./controllers/orden.controller");
+const conectarDB = require("../config/database");
+const Cliente = require("../models/Cliente");
+const Vehiculo = require("../models/Vehiculo");
+const OrdenReparacion = require("../models/OrdenReparacion");
+const { sincronizarHistorialBase } = require("../controllers/orden.controller");
 
 const clientes = [
   ["Laura", "Gómez"],

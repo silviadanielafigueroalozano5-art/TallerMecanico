@@ -3,8 +3,8 @@ const router = express.Router();
 const c = require("../controllers/cliente.controller");
 const { autenticar, soloAdmin } = require("../middleware/autenticar");
 router.use(autenticar);
-const { validarCliente } = require("../validations/validations/clienteValidation");
-const { validarId } = require("../validations/validations/idValidation");
+const { validarCliente } = require("../validations/clienteValidation");
+const { validarId } = require("../validations/idValidation");
 
 router.get("/", c.obtenerClientes);
 router.get("/cedula/:cedula/estado", c.consultarVehiculosPorCedula);
