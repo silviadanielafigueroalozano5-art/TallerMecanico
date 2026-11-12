@@ -9,6 +9,8 @@ import { normalizarTexto } from '../utils/texto'
 import ModalDialogo from '../components/ModalDialogo.vue'
 import GestorClientesModal from '../components/GestorClientesModal.vue'
 import EditorClienteVehiculo from '../components/EditorClienteVehiculo.vue'
+import BotonAccion from '../components/BotonAccion.vue'
+import EstadoVacio from '../components/EstadoVacio.vue'
 import { useGestionClientes } from '../utils/useGestionClientes'
 
 const estados = ['Recibido', 'En Diagnóstico', 'En Reparación', 'Listo', 'Entregado']
@@ -1112,13 +1114,13 @@ watch(
                   <p>{{ infoEstadoSeleccionado.descripcion }}</p>
                 </div>
                 <div class="summary-detail-actions">
-                  <button
-                    type="button"
-                    class="secondary-button"
+                  <!-- Botón reutilizable para ocultar el detalle del estado seleccionado -->
+                  <BotonAccion
+                    variante="secundario"
+                    icono="arrow_back"
+                    etiqueta="Regresar al resumen"
                     @click="cerrarEstadoResumen"
-                  >
-                    <span class="material-icons">arrow_back</span> Regresar al resumen
-                  </button>
+                  />
                 </div>
               </div>
 
@@ -1173,15 +1175,15 @@ watch(
                       </td>
                       <td class="summary-td-actions">
                         <div class="summary-row-actions">
-                          <button
+                          <!-- Botón reutilizable para abrir la ficha del vehículo -->
+                          <BotonAccion
                             v-if="orden.vehiculo?.placa"
-                            type="button"
-                            class="summary-action-btn is-primary-soft"
+                            variante="accion-suave"
+                            icono="visibility"
+                            etiqueta="Ficha"
                             title="Ver ficha del vehículo"
                             @click="seleccionarVehiculo(orden.vehiculo)"
-                          >
-                            <span class="material-icons">visibility</span> Ficha
-                          </button>
+                          />
                         </div>
                       </td>
                     </tr>
@@ -1189,14 +1191,17 @@ watch(
                 </table>
               </div>
 
-              <div v-else class="empty-state summary-empty-state">
-                <div class="empty-icon"><span class="material-icons">directions_car</span></div>
-                <strong>{{ infoEstadoSeleccionado.mensajeVacio }}</strong>
-                <p>Cuando una orden de servicio se encuentre en este estado, aparecerá listada aquí automáticamente.</p>
-                <button type="button" class="secondary-button" @click="cerrarEstadoResumen">
-                  <span class="material-icons">arrow_back</span> Regresar al resumen
-                </button>
-              </div>
+              <!-- Estado vacío #3: Estado de las órdenes sin vehículos en la etapa seleccionada -->
+              <EstadoVacio
+                v-else
+                class="summary-empty-state"
+                icono="directions_car"
+                :titulo="infoEstadoSeleccionado.mensajeVacio"
+                descripcion="Cuando una orden de servicio se encuentre en este estado, aparecerá listada aquí automáticamente."
+                texto-boton="Regresar al resumen"
+                icono-boton="arrow_back"
+                @accion="cerrarEstadoResumen"
+              />
             </div>
           </section>
 
@@ -1313,7 +1318,16 @@ watch(
                 </tr></tbody>
               </table>
             </div>
-            <div v-else class="empty-state"><div class="empty-icon"><span class="material-icons">history</span></div><strong>Aún no hay reparaciones registradas</strong><p>Cuando se creen órdenes para este vehículo, aparecerán aquí.</p><button class="secondary-button" @click="abrirNuevaOrden"><span class="material-icons">add</span> Crear primera orden</button></div>
+            <!-- Estado vacío #4: Ficha del vehículo sin reparaciones registradas -->
+            <EstadoVacio
+              v-else
+              icono="history"
+              titulo="Aún no hay reparaciones registradas"
+              descripcion="Cuando se creen órdenes para este vehículo, aparecerán aquí."
+              texto-boton="Crear primera orden"
+              icono-boton="add"
+              @accion="abrirNuevaOrden"
+            />
           </section>
 
           <section class="history-section delivered-section">
@@ -1331,7 +1345,13 @@ watch(
                 </tr></tbody>
               </table>
             </div>
-            <div v-else class="empty-state"><div class="empty-icon"><span class="material-icons">check_circle</span></div><strong>No hay entregas registradas</strong><p>Cuando una orden pase a estado entregado, aparecerá aquí.</p></div>
+            <!-- Estado vacío #5: Ficha del vehículo sin entregas registradas -->
+            <EstadoVacio
+              v-else
+              icono="check_circle"
+              titulo="No hay entregas registradas"
+              descripcion="Cuando una orden pase a estado entregado, aparecerá aquí."
+            />
           </section>
         </template>
 
@@ -1420,12 +1440,19 @@ watch(
                 </tbody>
               </table>
             </div>
-            <div v-else class="empty-state">
-              <div class="empty-icon"><span class="material-icons">{{ historialGeneral.length ? 'search_off' : 'history' }}</span></div>
-              <strong>{{ historialGeneral.length ? 'No hay resultados para estos filtros' : 'No hay historial registrado' }}</strong>
-              <p>{{ historialGeneral.length ? 'Prueba con otras fechas, otro vehículo o el nombre del cliente.' : 'Aún no se han creado órdenes en el taller.' }}</p>
-              <button v-if="historialGeneral.length" class="secondary-button" type="button" @click="limpiarFiltrosHistorial">Limpiar filtros</button>
-            </div>
+            <!-- Estado vacío #6: Historial general del taller sin resultados o vacío -->
+            <EstadoVacio
+              v-else
+              :icono="historialGeneral.length ? 'search_off' : 'history'"
+              :titulo="historialGeneral.length ? 'No hay resultados para estos filtros' : 'No hay historial registrado'"
+              :descripcion="
+                historialGeneral.length
+                  ? 'Prueba con otras fechas, otro vehículo o el nombre del cliente.'
+                  : 'Aún no se han creado órdenes en el taller.'
+              "
+              :texto-boton="historialGeneral.length ? 'Limpiar filtros' : ''"
+              @accion="limpiarFiltrosHistorial"
+            />
           </section>
         </template>
 
@@ -1460,11 +1487,13 @@ watch(
                 </tbody>
               </table>
             </div>
-            <div v-else class="empty-state">
-              <div class="empty-icon"><span class="material-icons">task_alt</span></div>
-              <strong>No hay vehículos entregados</strong>
-              <p>Cuando una orden pase al estado Entregado, aparecerá en esta lista.</p>
-            </div>
+            <!-- Estado vacío #7: Sección de vehículos entregados sin registros -->
+            <EstadoVacio
+              v-else
+              icono="task_alt"
+              titulo="No hay vehículos entregados"
+              descripcion="Cuando una orden pase al estado Entregado, aparecerá en esta lista."
+            />
           </section>
         </template>
 
@@ -1545,23 +1574,17 @@ watch(
       <q-item-label class="confirm-copy">{{ dialogo.mensaje }}</q-item-label>
       <q-item-label v-if="dialogo.nota" class="confirm-note">{{ dialogo.nota }}</q-item-label>
       <template #pie>
-        <q-btn
-          flat
-          no-caps
-          class="secondary-button"
-          :label="dialogo.textoCancelar"
-          :disable="dialogo.ocupado"
+        <BotonAccion
+          variante="secundario"
+          :etiqueta="dialogo.textoCancelar"
+          :deshabilitado="dialogo.ocupado"
           @click="dialogo.abierto = false"
         />
-        <q-btn
-          unelevated
-          no-caps
-          color="primary"
-          class="primary-button"
-          :class="{ 'danger-button': dialogo.peligro }"
-          :label="dialogo.ocupado ? 'Procesando…' : dialogo.textoConfirmar"
-          :loading="dialogo.ocupado"
-          :disable="dialogo.ocupado"
+        <BotonAccion
+          :variante="dialogo.peligro ? 'peligro' : 'primario'"
+          :etiqueta="dialogo.ocupado ? 'Procesando…' : dialogo.textoConfirmar"
+          :cargando="dialogo.ocupado"
+          :deshabilitado="dialogo.ocupado"
           @click="ejecutarDialogo"
         />
       </template>

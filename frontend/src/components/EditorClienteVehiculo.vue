@@ -1,7 +1,13 @@
 <script setup>
 import { computed } from 'vue'
 import ModalDialogo from './ModalDialogo.vue'
+import BotonAccion from './BotonAccion.vue'
 
+/**
+ * Modal de edición de propietario y vehículo (EditorClienteVehiculo.vue).
+ * Si form.vehiculo.vehiculoId existe, muestra y edita también los datos del vehículo;
+ * de lo contrario, edita únicamente al propietario.
+ */
 const props = defineProps({
   guardando: { type: Boolean, default: false },
   error: { type: String, default: '' },
@@ -12,7 +18,10 @@ const emit = defineEmits(['cerrar', 'guardar'])
 /** Datos compartidos con el composable: cliente + vehículo opcional. */
 const form = defineModel('form', { type: Object, required: true })
 
+// Año máximo permitido para la validación del modelo del vehículo
 const anioMaximo = computed(() => new Date().getFullYear() + 1)
+
+// Indica si el modal se abrió desde la pestaña de Vehículos (incluye edición de vehículo)
 const incluyeVehiculo = computed(() => Boolean(form.value?.vehiculo?.vehiculoId))
 </script>
 
@@ -148,24 +157,20 @@ const incluyeVehiculo = computed(() => Boolean(form.value?.vehiculo?.vehiculoId)
       </q-banner>
     </q-form>
 
+    <!-- Pie del modal usando el componente reutilizable BotonAccion -->
     <template #pie>
-      <q-btn
-        flat
-        no-caps
-        class="secondary-button"
-        label="Cancelar"
-        :disable="props.guardando"
+      <BotonAccion
+        variante="secundario"
+        etiqueta="Cancelar"
+        :deshabilitado="props.guardando"
         @click="emit('cerrar')"
       />
-      <q-btn
-        unelevated
-        no-caps
-        color="primary"
-        class="primary-button"
-        :label="props.guardando ? 'Guardando…' : 'Guardar cambios'"
-        :icon-right="props.guardando ? 'hourglass_top' : 'save'"
-        :loading="props.guardando"
-        :disable="props.guardando"
+      <BotonAccion
+        variante="primario"
+        :etiqueta="props.guardando ? 'Guardando…' : 'Guardar cambios'"
+        :icono-derecha="props.guardando ? 'hourglass_top' : 'save'"
+        :cargando="props.guardando"
+        :deshabilitado="props.guardando"
         @click="emit('guardar')"
       />
     </template>

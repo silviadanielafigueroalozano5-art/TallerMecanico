@@ -1,6 +1,13 @@
 <script setup>
 import { normalizarTexto } from '../utils/texto'
+import BotonAccion from './BotonAccion.vue'
+import EstadoVacio from './EstadoVacio.vue'
 
+/**
+ * Panel integrado de Clientes y Vehículos registrados (GestorClientesModal.vue).
+ * Permite alternar entre la lista de propietarios y la lista de vehículos,
+ * filtrarlos en tiempo real y ejecutar acciones de edición o eliminación.
+ */
 const props = defineProps({
   modoGestion: { type: String, default: 'clientes' },
   clientes: { type: Array, default: () => [] },
@@ -133,23 +140,20 @@ function placasDe(cliente) {
                 <q-item-label v-if="!placasDe(cliente).length" caption>Sin vehículos</q-item-label>
               </q-td>
               <q-td class="text-right">
+                <!-- Botones de acción reutilizados con BotonAccion.vue -->
                 <q-card-actions align="right" class="row-actions q-pa-none">
-                  <q-btn
-                    flat
-                    dense
-                    no-caps
-                    icon="edit"
-                    label="Editar"
-                    class="icon-action"
+                  <BotonAccion
+                    variante="accion"
+                    icono="edit"
+                    etiqueta="Editar"
+                    denso
                     @click="emit('editar-cliente', cliente)"
                   />
-                  <q-btn
-                    flat
-                    dense
-                    no-caps
-                    icon="delete"
-                    label="Eliminar"
-                    class="icon-action is-danger"
+                  <BotonAccion
+                    variante="accion-peligro"
+                    icono="delete"
+                    etiqueta="Eliminar"
+                    denso
                     @click="emit('eliminar-cliente', cliente)"
                   />
                 </q-card-actions>
@@ -158,15 +162,17 @@ function placasDe(cliente) {
           </tbody>
         </q-markup-table>
 
-        <q-card-section v-else class="empty-state column items-center text-center">
-          <q-icon name="groups" size="36px" color="primary" />
-          <q-item-label class="text-weight-bold q-mt-sm">
-            {{ props.clientes.length ? 'No hay resultados' : 'Aún no hay clientes registrados' }}
-          </q-item-label>
-          <q-item-label caption>
-            {{ props.clientes.length ? 'Prueba con otro nombre, documento o placa.' : 'Registra un propietario desde la búsqueda de vehículos.' }}
-          </q-item-label>
-        </q-card-section>
+        <!-- Estado vacío #1: Sin clientes registrados o sin coincidencias en el filtro -->
+        <EstadoVacio
+          v-else
+          icono="groups"
+          :titulo="props.clientes.length ? 'No hay resultados' : 'Aún no hay clientes registrados'"
+          :descripcion="
+            props.clientes.length
+              ? 'Prueba con otro nombre, documento o placa.'
+              : 'Registra un propietario desde la búsqueda de vehículos.'
+          "
+        />
       </template>
 
       <template v-else>
@@ -204,24 +210,21 @@ function placasDe(cliente) {
                 <q-badge class="state-pill" :class="auto.estadoClase" :label="auto.estadoReparacion" />
               </q-td>
               <q-td class="text-right">
+                <!-- Botones de acción reutilizados con BotonAccion.vue -->
                 <q-card-actions align="right" class="row-actions q-pa-none">
-                  <q-btn
-                    flat
-                    dense
-                    no-caps
-                    icon="edit"
-                    label="Editar"
-                    class="icon-action"
-                    :disable="!auto.cliente?._id"
+                  <BotonAccion
+                    variante="accion"
+                    icono="edit"
+                    etiqueta="Editar"
+                    denso
+                    :deshabilitado="!auto.cliente?._id"
                     @click="emit('editar-vehiculo', auto)"
                   />
-                  <q-btn
-                    flat
-                    dense
-                    no-caps
-                    icon="delete"
-                    label="Eliminar"
-                    class="icon-action is-danger"
+                  <BotonAccion
+                    variante="accion-peligro"
+                    icono="delete"
+                    etiqueta="Eliminar"
+                    denso
                     @click="emit('eliminar-vehiculo', auto)"
                   />
                 </q-card-actions>
@@ -230,11 +233,13 @@ function placasDe(cliente) {
           </tbody>
         </q-markup-table>
 
-        <q-card-section v-else class="empty-state column items-center text-center">
-          <q-icon name="directions_car" size="36px" color="primary" />
-          <q-item-label class="text-weight-bold q-mt-sm">No hay vehículos para mostrar</q-item-label>
-          <q-item-label caption>Registra un vehículo desde la búsqueda por placa.</q-item-label>
-        </q-card-section>
+        <!-- Estado vacío #2: Sin vehículos registrados o sin coincidencias en el filtro -->
+        <EstadoVacio
+          v-else
+          icono="directions_car"
+          titulo="No hay vehículos para mostrar"
+          descripcion="Registra un vehículo desde la búsqueda por placa."
+        />
       </template>
     </q-card-section>
   </q-card>

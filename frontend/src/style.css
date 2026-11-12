@@ -1326,14 +1326,16 @@ textarea::placeholder {
 .empty-icon .material-icons {
   font-size: 21px;
 }
-.empty-state > strong {
+.empty-state > strong,
+.empty-state-title {
   color: #394552;
   font:
     700 15px "Segoe UI",
     Arial,
     sans-serif;
 }
-.empty-state > p {
+.empty-state > p,
+.empty-state-desc {
   max-width: 320px;
   margin: 6px 0 14px;
   color: #919ba5;
