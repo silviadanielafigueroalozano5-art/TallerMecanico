@@ -40,5 +40,8 @@ coverage/
 *.tmp
 *.temp
 
+# README
+README.md
+
 # Datos locales / mongo
 *.local
