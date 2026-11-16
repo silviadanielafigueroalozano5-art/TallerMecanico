@@ -6,11 +6,17 @@ import { useAuthStore } from '../stores/auth'
 import { useWorkshopStore, obtenerEstadosDisponibles, obtenerEstadosOrden } from '../stores/workshop'
 import { esCorreoValido } from '../utils/validation'
 import { normalizarTexto } from '../utils/texto'
+import { formatoFecha, formatoDinero } from '../utils/formato'
 import ModalDialogo from '../components/ModalDialogo.vue'
 import GestorClientesModal from '../components/GestorClientesModal.vue'
 import EditorClienteVehiculo from '../components/EditorClienteVehiculo.vue'
 import BotonAccion from '../components/BotonAccion.vue'
 import EstadoVacio from '../components/EstadoVacio.vue'
+import TablaOrdenesEstado from '../components/TablaOrdenesEstado.vue'
+import TablaHistorialReparaciones from '../components/TablaHistorialReparaciones.vue'
+import TablaHistorialEntregas from '../components/TablaHistorialEntregas.vue'
+import TablaHistorialGeneral from '../components/TablaHistorialGeneral.vue'
+import TablaOrdenesEntregadas from '../components/TablaOrdenesEntregadas.vue'
 import { useGestionClientes } from '../utils/useGestionClientes'
 
 const estados = ['Recibido', 'En Diagnóstico', 'En Reparación', 'Listo', 'Entregado']
@@ -809,23 +815,6 @@ const {
   borrarVehiculoGestion,
 } = useGestionClientes({ aviso, abrirConfirmacion })
 
-function formatoFecha(fecha) {
-  if (!fecha) return '—'
-  return new Date(fecha).toLocaleDateString('es-CO', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  })
-}
-
-function formatoDinero(valor) {
-  return new Intl.NumberFormat('es-CO', {
-    style: 'currency',
-    currency: 'COP',
-    maximumFractionDigits: 0,
-  }).format(Number(valor) || 0)
-}
-
 watch(
   () => [route.name, route.params.placa, route.query.estado],
   async ([name, placa, estado]) => {
@@ -1128,68 +1117,7 @@ watch(
                 <span class="material-icons">autorenew</span> Cargando vehículos del estado seleccionado…
               </div>
 
-              <div v-else-if="ordenesEstadoSeleccionado.length" class="summary-table-wrap">
-                <table class="summary-orders-table">
-                  <thead>
-                    <tr>
-                      <th>PLACA</th>
-                      <th>MARCA Y MODELO</th>
-                      <th>CLIENTE</th>
-                      <th>SERVICIO / REPARACIÓN</th>
-                      <th>FECHA DE INGRESO</th>
-                      <th>ESTADO</th>
-                      <th>MECÁNICO</th>
-                      <th class="summary-th-actions">ACCIONES</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="orden in ordenesEstadoSeleccionado" :key="orden._id">
-                      <td class="summary-td-plate">
-                        <span class="summary-plate-badge">{{ orden.vehiculo?.placa || '—' }}</span>
-                      </td>
-                      <td>
-                        <div class="summary-cell-stack">
-                          <strong>{{ normalizarTexto(orden.vehiculo?.marca) }} {{ normalizarTexto(orden.vehiculo?.modelo) }}</strong>
-                          <small v-if="orden.vehiculo?.anio">Modelo {{ orden.vehiculo.anio }}</small>
-                        </div>
-                      </td>
-                      <td>
-                        <div class="summary-cell-stack">
-                          <strong>{{ normalizarTexto([orden.vehiculo?.cliente?.nombre, orden.vehiculo?.cliente?.apellido].filter(Boolean).join(' ')) || '—' }}</strong>
-                          <small v-if="orden.vehiculo?.cliente?.telefono">{{ orden.vehiculo.cliente.telefono }}</small>
-                        </div>
-                      </td>
-                      <td class="summary-td-service">
-                        <div class="summary-service-text">{{ normalizarTexto(orden.descripcionProblema) || '—' }}</div>
-                      </td>
-                      <td class="summary-td-date">{{ formatoFecha(orden.fechaIngreso) }}</td>
-                      <td class="summary-td-status">
-                        <span class="status-pill" :class="`status-${orden.estado.toLowerCase().replaceAll(' ', '-')}`">
-                          <i></i>{{ orden.estado }}
-                        </span>
-                      </td>
-                      <td class="summary-td-mechanic">
-                        <span :class="{ 'summary-unassigned': !orden.mecanico }">
-                          {{ orden.mecanico ? normalizarTexto(orden.mecanico) : 'Sin asignar' }}
-                        </span>
-                      </td>
-                      <td class="summary-td-actions">
-                        <div class="summary-row-actions">
-                          <!-- Botón reutilizable para abrir la ficha del vehículo -->
-                          <BotonAccion
-                            v-if="orden.vehiculo?.placa"
-                            variante="accion-suave"
-                            icono="visibility"
-                            etiqueta="Ficha"
-                            title="Ver ficha del vehículo"
-                            @click="seleccionarVehiculo(orden.vehiculo)"
-                          />
-                        </div>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
+              <TablaOrdenesEstado v-else-if="ordenesEstadoSeleccionado.length" :ordenes="ordenesEstadoSeleccionado" @ver-ficha="seleccionarVehiculo" />
 
               <!-- Estado vacío #3: Estado de las órdenes sin vehículos en la etapa seleccionada -->
               <EstadoVacio
@@ -1307,17 +1235,7 @@ watch(
               <div><h2>Historial de reparaciones</h2><p>Todos los trabajos realizados a este vehículo.</p></div>
               <span class="result-count">{{ historial.length }} {{ historial.length === 1 ? 'orden' : 'órdenes' }}</span>
             </div>
-            <div v-if="historial.length" class="history-table-wrap">
-              <table class="history-table"><thead><tr><th>ORDEN / REPARACIÓN</th><th>FECHA DE INGRESO</th><th>ESTADO</th><th>COSTO</th><th></th></tr></thead>
-                <tbody><tr v-for="(orden, index) in historial" :key="orden._id">
-                  <td><div class="repair-name"><span class="repair-icon" :class="index % 2 ? 'repair-blue' : 'repair-orange'"><span class="material-icons">{{ index % 2 ? 'settings' : 'build' }}</span></span><div><strong>{{ normalizarTexto(orden.descripcionProblema) }}</strong><small>Servicio de reparación</small></div></div></td>
-                  <td>{{ formatoFecha(orden.fechaIngreso) }}</td>
-                  <td><span class="status-pill" :class="`status-${orden.estado.toLowerCase().replaceAll(' ', '-')}`"><i></i>{{ orden.estado }}</span></td>
-                  <td class="cost-cell">{{ formatoDinero(orden.monto) }}</td>
-                  <td><span class="material-icons table-more">more_horiz</span></td>
-                </tr></tbody>
-              </table>
-            </div>
+            <TablaHistorialReparaciones v-if="historial.length" :ordenes="historial" />
             <!-- Estado vacío #4: Ficha del vehículo sin reparaciones registradas -->
             <EstadoVacio
               v-else
@@ -1335,16 +1253,7 @@ watch(
               <div><h2>Historial de entregas</h2><p>Reparaciones ya finalizadas y entregadas al cliente.</p></div>
               <span class="result-count">{{ historialEntregados.length }} {{ historialEntregados.length === 1 ? 'entrega' : 'entregas' }}</span>
             </div>
-            <div v-if="historialEntregados.length" class="history-table-wrap">
-              <table class="history-table"><thead><tr><th>ORDEN / REPARACIÓN</th><th>FECHA DE INGRESO</th><th>FECHA DE ENTREGA</th><th>COSTO</th></tr></thead>
-                <tbody><tr v-for="orden in historialEntregados" :key="orden._id">
-                  <td><div class="repair-name"><span class="repair-icon repair-blue"><span class="material-icons">done</span></span><div><strong>{{ normalizarTexto(orden.descripcionProblema) }}</strong><small>Servicio entregado</small></div></div></td>
-                  <td>{{ formatoFecha(orden.fechaIngreso) }}</td>
-                  <td>{{ formatoFecha(orden.fechaEntrega || orden.fechaIngreso) }}</td>
-                  <td class="cost-cell">{{ formatoDinero(orden.monto) }}</td>
-                </tr></tbody>
-              </table>
-            </div>
+            <TablaHistorialEntregas v-if="historialEntregados.length" :ordenes="historialEntregados" />
             <!-- Estado vacío #5: Ficha del vehículo sin entregas registradas -->
             <EstadoVacio
               v-else
@@ -1416,30 +1325,7 @@ watch(
                 Limpiar filtros
               </button>
             </div>
-            <div v-if="historialGeneralOrdenado.length" class="history-table-wrap">
-              <table class="history-table">
-                <thead>
-                  <tr>
-                    <th>FECHA</th>
-                    <th>VEHÍCULO</th>
-                    <th>CLIENTE</th>
-                    <th>REPARACIÓN</th>
-                    <th>ESTADO</th>
-                    <th>COSTO</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="orden in historialGeneralOrdenado" :key="orden._id">
-                    <td>{{ formatoFecha(orden.fechaIngreso) }}</td>
-                    <td><strong>{{ normalizarTexto(orden.vehiculo?.marca) }} {{ normalizarTexto(orden.vehiculo?.modelo) }}</strong><br><small>{{ orden.vehiculo?.placa }}</small></td>
-                    <td>{{ normalizarTexto(orden.vehiculo?.cliente?.nombre || '—') }} {{ normalizarTexto(orden.vehiculo?.cliente?.apellido || '') }}</td>
-                    <td>{{ normalizarTexto(orden.descripcionProblema) }}</td>
-                    <td><span class="status-pill" :class="`status-${orden.estado.toLowerCase().replaceAll(' ', '-')}`"><i></i>{{ orden.estado }}</span></td>
-                    <td class="cost-cell">{{ formatoDinero(orden.monto) }}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+            <TablaHistorialGeneral v-if="historialGeneralOrdenado.length" :ordenes="historialGeneralOrdenado" />
             <!-- Estado vacío #6: Historial general del taller sin resultados o vacío -->
             <EstadoVacio
               v-else
@@ -1465,28 +1351,7 @@ watch(
               <div><h2>Órdenes entregadas</h2><p>Vehículos cuyo proceso de reparación ha finalizado.</p></div>
               <span class="result-count">{{ ordenesEntregadas.length }} {{ ordenesEntregadas.length === 1 ? 'orden' : 'órdenes' }}</span>
             </div>
-            <div v-if="ordenesEntregadas.length" class="history-table-wrap">
-              <table class="history-table">
-                <thead>
-                  <tr>
-                    <th>FECHA DE ENTREGA</th>
-                    <th>VEHÍCULO</th>
-                    <th>CLIENTE</th>
-                    <th>REPARACIÓN</th>
-                    <th>COSTO</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="orden in ordenesEntregadas" :key="orden._id">
-                    <td>{{ formatoFecha(orden.fechaEntrega) }}</td>
-                    <td><strong>{{ normalizarTexto(orden.vehiculo?.marca) }} {{ normalizarTexto(orden.vehiculo?.modelo) }}</strong><br /><small>{{ orden.vehiculo?.placa }}</small></td>
-                    <td>{{ normalizarTexto(orden.vehiculo?.cliente?.nombre || '—') }} {{ normalizarTexto(orden.vehiculo?.cliente?.apellido || '') }}</td>
-                    <td>{{ normalizarTexto(orden.descripcionProblema) }}</td>
-                    <td class="cost-cell">{{ formatoDinero(orden.monto) }}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+            <TablaOrdenesEntregadas v-if="ordenesEntregadas.length" :ordenes="ordenesEntregadas" />
             <!-- Estado vacío #7: Sección de vehículos entregados sin registros -->
             <EstadoVacio
               v-else
